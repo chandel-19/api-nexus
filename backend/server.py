@@ -612,6 +612,57 @@ async def create_environment(org_id: str, env_data: EnvironmentCreate, request: 
     return new_env
 
 
+@api_router.put("/environments/{env_id}", response_model=Environment)
+async def update_environment(env_id: str, env_data: EnvironmentUpdate, request: Request):
+    """Update environment"""
+    user = await get_current_user(request)
+    
+    environment = await db.environments.find_one({"env_id": env_id})
+    if not environment:
+        raise HTTPException(status_code=404, detail="Environment not found")
+    
+    # Verify access
+    org = await db.organizations.find_one(
+        {"org_id": environment["org_id"], "members": user["user_id"]}
+    )
+    if not org:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    update_fields = {}
+    if env_data.name is not None:
+        update_fields["name"] = env_data.name
+    if env_data.variables is not None:
+        update_fields["variables"] = [v.dict() for v in env_data.variables]
+    
+    await db.environments.update_one(
+        {"env_id": env_id},
+        {"$set": update_fields}
+    )
+    
+    updated_env = await db.environments.find_one({"env_id": env_id}, {"_id": 0})
+    return updated_env
+
+
+@api_router.delete("/environments/{env_id}")
+async def delete_environment(env_id: str, request: Request):
+    """Delete environment"""
+    user = await get_current_user(request)
+    
+    environment = await db.environments.find_one({"env_id": env_id})
+    if not environment:
+        raise HTTPException(status_code=404, detail="Environment not found")
+    
+    # Verify access
+    org = await db.organizations.find_one(
+        {"org_id": environment["org_id"], "members": user["user_id"]}
+    )
+    if not org:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.environments.delete_one({"env_id": env_id})
+    return {"message": "Environment deleted successfully"}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
