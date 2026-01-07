@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const ProtectedRoute = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(
     location.state?.user ? true : null
   );
@@ -14,6 +15,7 @@ const ProtectedRoute = ({ children }) => {
   useEffect(() => {
     // If user data passed from AuthCallback, skip auth check
     if (location.state?.user) {
+      setIsAuthenticated(true);
       return;
     }
 
