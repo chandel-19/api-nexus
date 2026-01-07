@@ -249,4 +249,5 @@ export const AppProvider = ({ children }) => {
     loading
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;\n};
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+};
