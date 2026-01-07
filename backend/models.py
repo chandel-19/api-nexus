@@ -164,6 +164,12 @@ class EnvironmentUpdate(BaseModel):
     variables: Optional[List[EnvironmentVariable]] = None
 
 
+# Collection Script Models
+class CollectionScripts(BaseModel):
+    pre_request: Optional[str] = None  # JavaScript code to run before requests
+    post_request: Optional[str] = None  # JavaScript code to run after requests
+
+
 # Auth Models
 class SessionExchange(BaseModel):
     session_id: str
