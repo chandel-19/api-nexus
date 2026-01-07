@@ -43,6 +43,8 @@ class Collection(BaseModel):
     color: str = "#3B82F6"
     created_by: str
     created_at: datetime
+    pre_request_script: Optional[str] = None
+    post_request_script: Optional[str] = None
 
 
 class CollectionCreate(BaseModel):
