@@ -1,12 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  mockUser,
-  mockOrganizations,
-  mockCollections,
-  mockRequests,
-  mockHistory,
-  mockEnvironments
-} from '../mock';
+import axios from 'axios';
+import { useLocation } from 'react-router-dom';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const AppContext = createContext();
 
@@ -19,23 +16,102 @@ export const useApp = () => {
 };
 
 export const AppProvider = ({ children }) => {
-  const [user, setUser] = useState(mockUser);
-  const [organizations, setOrganizations] = useState(mockOrganizations);
-  const [currentOrg, setCurrentOrg] = useState(mockOrganizations[0]);
-  const [collections, setCollections] = useState(mockCollections);
-  const [requests, setRequests] = useState(mockRequests);
-  const [history, setHistory] = useState(mockHistory);
-  const [environments, setEnvironments] = useState(mockEnvironments);
-  const [currentEnv, setCurrentEnv] = useState(mockEnvironments[0]);
+  const location = useLocation();
+  const [user, setUser] = useState(location.state?.user || null);
+  const [organizations, setOrganizations] = useState([]);
+  const [currentOrg, setCurrentOrg] = useState(null);
+  const [collections, setCollections] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [environments, setEnvironments] = useState([]);
+  const [currentEnv, setCurrentEnv] = useState(null);
   const [openTabs, setOpenTabs] = useState([]);
   const [activeTab, setActiveTab] = useState(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Filter data by current org
-  const orgCollections = collections.filter(c => c.org_id === currentOrg?.org_id);
-  const orgRequests = requests.filter(r => r.org_id === currentOrg?.org_id);
-  const orgEnvironments = environments.filter(e => e.org_id === currentOrg?.org_id);
-  const orgHistory = history.filter(h => h.org_id === currentOrg?.org_id);
+  // Load user data if not already loaded
+  useEffect(() => {
+    const loadUser = async () => {
+      if (!user) {
+        try {
+          const response = await axios.get(`${API}/auth/me`, {
+            withCredentials: true
+          });
+          setUser(response.data);
+        } catch (error) {
+          console.error('Failed to load user:', error);
+          setLoading(false);
+        }
+      }
+    };
+    loadUser();
+  }, [user]);
+
+  // Load organizations when user is available
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      if (user) {
+        try {
+          const response = await axios.get(`${API}/organizations`, {
+            withCredentials: true
+          });
+          setOrganizations(response.data);
+          if (response.data.length > 0) {
+            setCurrentOrg(response.data[0]);
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error('Failed to load organizations:', error);
+          setLoading(false);
+        }
+      }
+    };
+    loadOrganizations();
+  }, [user]);
+
+  // Load organization-specific data
+  useEffect(() => {
+    const loadOrgData = async () => {
+      if (currentOrg) {
+        try {
+          // Load collections
+          const collectionsRes = await axios.get(
+            `${API}/organizations/${currentOrg.org_id}/collections`,
+            { withCredentials: true }
+          );
+          setCollections(collectionsRes.data);
+
+          // Load requests
+          const requestsRes = await axios.get(
+            `${API}/organizations/${currentOrg.org_id}/requests`,
+            { withCredentials: true }
+          );
+          setRequests(requestsRes.data);
+
+          // Load environments
+          const envsRes = await axios.get(
+            `${API}/organizations/${currentOrg.org_id}/environments`,
+            { withCredentials: true }
+          );
+          setEnvironments(envsRes.data);
+          if (envsRes.data.length > 0) {
+            setCurrentEnv(envsRes.data[0]);
+          }
+
+          // Load history
+          const historyRes = await axios.get(
+            `${API}/organizations/${currentOrg.org_id}/history`,
+            { withCredentials: true }
+          );
+          setHistory(historyRes.data);
+        } catch (error) {
+          console.error('Failed to load org data:', error);
+        }
+      }
+    };
+    loadOrgData();
+  }, [currentOrg]);
 
   // Add request to tab
   const openRequestInTab = (request) => {
@@ -69,12 +145,12 @@ export const AppProvider = ({ children }) => {
     const newRequest = {
       request_id: `req_new_${Date.now()}`,
       collection_id: null,
-      org_id: currentOrg.org_id,
+      org_id: currentOrg?.org_id,
       name: 'Untitled Request',
       method: 'GET',
       url: '',
-      headers: [{ key: '', value: '', enabled: true }],
-      params: [{ key: '', value: '', enabled: true }],
+      headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+      params: [],
       body: { type: 'none', content: '' },
       auth: { type: 'none' },
       created_at: new Date().toISOString()
@@ -82,14 +158,53 @@ export const AppProvider = ({ children }) => {
     openRequestInTab(newRequest);
   };
 
-  // Update request
+  // Update request (local state for unsaved changes)
   const updateRequest = (requestId, updates) => {
     setOpenTabs(prev => prev.map(tab => 
       tab.request_id === requestId ? { ...tab, ...updates } : tab
     ));
-    setRequests(prev => prev.map(req => 
-      req.request_id === requestId ? { ...req, ...updates } : req
-    ));
+  };
+
+  // Save request to backend
+  const saveRequest = async (request) => {
+    try {
+      if (request.request_id.startsWith('req_new_')) {
+        // Create new request
+        const response = await axios.post(
+          `${API}/requests`,
+          request,
+          { withCredentials: true }
+        );
+        const savedRequest = response.data;
+        
+        // Update tabs and requests list
+        setOpenTabs(prev => prev.map(tab =>
+          tab.request_id === request.request_id ? savedRequest : tab
+        ));
+        setActiveTab(savedRequest.request_id);
+        setRequests(prev => [...prev, savedRequest]);
+        
+        return savedRequest;
+      } else {
+        // Update existing request
+        const response = await axios.put(
+          `${API}/requests/${request.request_id}`,
+          request,
+          { withCredentials: true }
+        );
+        const updatedRequest = response.data;
+        
+        // Update local state
+        setRequests(prev => prev.map(r =>
+          r.request_id === request.request_id ? updatedRequest : r
+        ));
+        
+        return updatedRequest;
+      }
+    } catch (error) {
+      console.error('Failed to save request:', error);
+      throw error;
+    }
   };
 
   // Keyboard shortcut for command palette
@@ -116,10 +231,10 @@ export const AppProvider = ({ children }) => {
     organizations,
     currentOrg,
     setCurrentOrg,
-    collections: orgCollections,
-    requests: orgRequests,
-    history: orgHistory,
-    environments: orgEnvironments,
+    collections,
+    requests,
+    history,
+    environments,
     currentEnv,
     setCurrentEnv,
     openTabs,
@@ -128,9 +243,10 @@ export const AppProvider = ({ children }) => {
     closeTab,
     createNewRequest,
     updateRequest,
+    saveRequest,
     commandPaletteOpen,
-    setCommandPaletteOpen
+    setCommandPaletteOpen,
+    loading
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
-};
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;\n};
