@@ -159,10 +159,16 @@ const RequestBuilder = ({ request }) => {
           </Button>
 
           <Button
+            onClick={handleSaveRequest}
+            disabled={saving}
             variant="ghost"
             className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
           >
-            <Save className="w-4 h-4" />
+            {saving ? (
+              <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
           </Button>
         </div>
 
