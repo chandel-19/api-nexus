@@ -51,12 +51,16 @@ class CollectionCreate(BaseModel):
     name: str
     description: Optional[str] = None
     color: str = "#3B82F6"
+    pre_request_script: Optional[str] = None
+    post_request_script: Optional[str] = None
 
 
 class CollectionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     color: Optional[str] = None
+    pre_request_script: Optional[str] = None
+    post_request_script: Optional[str] = None
 
 
 # Request Models
