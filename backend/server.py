@@ -580,8 +580,8 @@ async def get_environments(org_id: str, request: Request):
     return environments
 
 
-@api_router.post("/environments", response_model=Environment)
-async def create_environment(env_data: EnvironmentCreate, org_id: str, request: Request):
+@api_router.post("/organizations/{org_id}/environments", response_model=Environment)
+async def create_environment(org_id: str, env_data: EnvironmentCreate, request: Request):
     """Create new environment"""
     user = await get_current_user(request)
     
