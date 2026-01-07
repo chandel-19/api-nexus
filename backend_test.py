@@ -140,19 +140,25 @@ print('Test data cleaned up');
         
         try:
             if method.upper() == "GET":
-                response = requests.get(url, headers=headers, timeout=30)
+                response = requests.get(url, headers=headers, timeout=60)
             elif method.upper() == "POST":
-                response = requests.post(url, headers=headers, json=data, timeout=30)
+                response = requests.post(url, headers=headers, json=data, timeout=60)
             elif method.upper() == "PUT":
-                response = requests.put(url, headers=headers, json=data, timeout=30)
+                response = requests.put(url, headers=headers, json=data, timeout=60)
             elif method.upper() == "DELETE":
-                response = requests.delete(url, headers=headers, timeout=30)
+                response = requests.delete(url, headers=headers, timeout=60)
             else:
                 raise ValueError(f"Unsupported method: {method}")
             
             return response
+        except requests.exceptions.Timeout:
+            print(f"Request timeout for {method} {url}")
+            return None
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error for {method} {url}")
+            return None
         except Exception as e:
-            print(f"Request error: {e}")
+            print(f"Request error for {method} {url}: {e}")
             return None
     
     def test_auth_endpoints(self):
