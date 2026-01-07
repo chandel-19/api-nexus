@@ -66,8 +66,16 @@ async def auth_session(session_data: SessionExchange):
         session_token = user_data.get("session_token")
         await create_session(db, user["user_id"], session_token)
         
+        # Convert user data to JSON-serializable format
+        user_response = {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user.get("picture")
+        }
+        
         # Return user data
-        response = JSONResponse(content=user)
+        response = JSONResponse(content=user_response)
         response.set_cookie(
             key="session_token",
             value=session_token,
