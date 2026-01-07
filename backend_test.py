@@ -48,7 +48,10 @@ class PostmanCloneAPITester:
             self.user_id = f"test-user-{timestamp}"
             self.session_token = f"test_session_{timestamp}"
             
-            # MongoDB commands to create test user and session
+            # Generate org_id for default organization
+            self.org_id = f"org_{timestamp}"
+            
+            # MongoDB commands to create test user, session, and default organization
             mongo_script = f"""
 use('test_database');
 db.users.insertOne({{
@@ -64,7 +67,15 @@ db.user_sessions.insertOne({{
   expires_at: new Date(Date.now() + 7*24*60*60*1000),
   created_at: new Date()
 }});
-print('Test user created successfully');
+db.organizations.insertOne({{
+  org_id: '{self.org_id}',
+  name: 'My Workspace',
+  type: 'personal',
+  owner_id: '{self.user_id}',
+  members: ['{self.user_id}'],
+  created_at: new Date()
+}});
+print('Test user and organization created successfully');
 """
             
             # Execute MongoDB script
