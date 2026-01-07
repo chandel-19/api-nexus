@@ -167,10 +167,25 @@ print('Test data cleaned up');
         
         # Test /auth/me without token (should fail)
         response = self.make_request("GET", "/auth/me", auth_required=False)
-        if response and response.status_code == 401:
-            self.log_test("Auth required - no token", True, "Correctly returns 401")
+        if response:
+            if response.status_code == 401:
+                self.log_test("Auth required - no token", True, "Correctly returns 401")
+            else:
+                self.log_test("Auth required - no token", False, f"Expected 401, got {response.status_code}")
         else:
-            self.log_test("Auth required - no token", False, f"Expected 401, got {response.status_code if response else 'No response'}")
+            # Try with curl as fallback
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ["curl", "-X", "GET", f"{BACKEND_URL}/auth/me", "--max-time", "10", "-s", "-w", "%{http_code}"],
+                    capture_output=True, text=True, timeout=15
+                )
+                if result.returncode == 0 and "401" in result.stdout:
+                    self.log_test("Auth required - no token", True, "Correctly returns 401 (via curl)")
+                else:
+                    self.log_test("Auth required - no token", False, f"Network issue - curl result: {result.stdout}")
+            except:
+                self.log_test("Auth required - no token", False, "Network connectivity issue")
         
         # Test /auth/me with valid token
         response = self.make_request("GET", "/auth/me")
