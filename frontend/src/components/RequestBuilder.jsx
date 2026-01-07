@@ -11,24 +11,68 @@ import {
 } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { toast } from '../hooks/use-toast';
-import { mockResponse } from '../mock';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const RequestBuilder = ({ request }) => {
-  const { updateRequest } = useApp();
+  const { updateRequest, saveRequest } = useApp();
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleSendRequest = async () => {
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setResponse(mockResponse);
+    try {
+      // Execute request via backend proxy
+      const executeResponse = await axios.post(
+        `${API}/requests/execute`,
+        {
+          method: request.method,
+          url: request.url,
+          headers: request.headers,
+          params: request.params,
+          body: request.body,
+          auth: request.auth
+        },
+        { withCredentials: true }
+      );
+
+      setResponse(executeResponse.data);
       setLoading(false);
+      
       toast({
         title: 'Request sent',
-        description: `${request.method} request completed in ${mockResponse.time}ms`,
+        description: `${request.method} request completed in ${executeResponse.data.time}ms`,
       });
-    }, 800);
+    } catch (error) {
+      setLoading(false);
+      toast({
+        title: 'Request failed',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleSaveRequest = async () => {
+    setSaving(true);
+    try {
+      await saveRequest(request);
+      toast({
+        title: 'Request saved',
+        description: 'Your request has been saved successfully',
+      });
+      setSaving(false);
+    } catch (error) {
+      toast({
+        title: 'Save failed',
+        description: error.message,
+        variant: 'destructive'
+      });
+      setSaving(false);
+    }
   };
 
   const updateField = (field, value) => {
