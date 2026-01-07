@@ -240,6 +240,8 @@ async def create_collection(org_id: str, coll_data: CollectionCreate, request: R
         "name": coll_data.name,
         "description": coll_data.description,
         "color": coll_data.color,
+        "pre_request_script": coll_data.pre_request_script,
+        "post_request_script": coll_data.post_request_script,
         "created_by": user["user_id"],
         "created_at": datetime.now(timezone.utc)
     }
