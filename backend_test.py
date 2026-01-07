@@ -476,9 +476,8 @@ print('Test data cleaned up');
         else:
             self.log_test("Get environments", False, f"Status: {response.status_code if response else 'No response'}")
         
-        # Note: The create environment endpoint has an issue in the server.py - it expects org_id as query param
-        # but the endpoint signature shows it as a path param. This is a bug in the implementation.
-        # For now, we'll test what we can
+        # Note: The create environment endpoint has a bug in server.py - it expects org_id as path param
+        # but the route doesn't include it. Testing with query parameter approach.
         
         env_data = {
             "name": "Test Environment",
@@ -488,14 +487,16 @@ print('Test data cleaned up');
             ]
         }
         
-        # This will likely fail due to the endpoint signature issue
-        response = self.make_request("POST", f"/environments?org_id={self.org_id}", env_data)
+        # Try to create environment - this will likely fail due to endpoint signature mismatch
+        response = self.make_request("POST", "/environments", env_data)
         if response and response.status_code == 200:
             env = response.json()
             self.env_id = env.get("env_id")
             self.log_test("Create environment", True, f"Created environment: {self.env_id}")
         else:
-            self.log_test("Create environment", False, f"Status: {response.status_code if response else 'No response'} - Known endpoint signature issue")
+            # This is expected to fail due to the bug in server.py line 584
+            # The endpoint signature expects org_id as a parameter but it's not in the route
+            self.log_test("Create environment", False, f"Status: {response.status_code if response else 'No response'} - Known endpoint signature bug in server.py:584")
     
     def test_history_endpoints(self):
         """Test history endpoints"""
