@@ -53,7 +53,8 @@ const Sidebar = () => {
     currentOrg,
     organizations,
     setCurrentOrg,
-    user
+    user,
+    refreshCollections
   } = useApp();
 
   const navigate = useNavigate();
@@ -61,6 +62,9 @@ const Sidebar = () => {
   const [activeTab, setActiveTab] = useState('collections');
   const [showEnvironments, setShowEnvironments] = useState(false);
   const [showOrgManager, setShowOrgManager] = useState(false);
+  const [showCollectionManager, setShowCollectionManager] = useState(false);
+  const [editingCollection, setEditingCollection] = useState(null);
+  const [deletingCollection, setDeletingCollection] = useState(null);
 
   const toggleCollection = (collectionId) => {
     setExpandedCollections(prev => {
