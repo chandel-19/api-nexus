@@ -34,7 +34,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const RequestBuilder = ({ request }) => {
-  const { updateRequest, saveRequest, collections, refreshCollections, closeTab } = useApp();
+  const { updateRequest, saveRequest, collections, refreshCollections, closeTab, activeTab } = useApp();
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -42,6 +42,49 @@ const RequestBuilder = ({ request }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(request?.collection_id || null);
   const [saveAsName, setSaveAsName] = useState(request?.name || '');
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle shortcuts if this tab is active
+      if (activeTab !== request.request_id) return;
+
+      // Cmd/Ctrl + S - Save
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && !e.shiftKey) {
+        e.preventDefault();
+        handleSave();
+      }
+
+      // Cmd/Ctrl + Shift + S - Save As
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        handleSaveAs();
+      }
+
+      // Cmd/Ctrl + Enter - Send Request
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (request.url && !loading) {
+          handleSendRequest();
+        }
+      }
+
+      // Cmd/Ctrl + W - Close Tab
+      if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+        e.preventDefault();
+        closeTab(request.request_id);
+      }
+
+      // Cmd/Ctrl + D - Delete (for saved requests)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && !request.request_id.startsWith('req_new_')) {
+        e.preventDefault();
+        setShowDeleteDialog(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [request, loading, activeTab]);
 
   const handleSendRequest = async () => {
     setLoading(true);
