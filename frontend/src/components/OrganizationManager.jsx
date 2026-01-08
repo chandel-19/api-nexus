@@ -266,92 +266,111 @@ const OrganizationManager = ({ onClose }) => {
 
           {/* Organization Cards */}
           <div className="space-y-3">
-            {organizations.map(org => {
-              const isOwner = org.owner_id === user?.user_id;
-              
-              return (
-                <div
-                  key={org.org_id}
-                  className={`p-4 rounded-lg border transition-colors ${
-                    currentOrg?.org_id === org.org_id
-                      ? 'bg-blue-500/10 border-blue-500/50'
-                      : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <Building2 className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-medium text-zinc-100">{org.name}</h4>
-                          {isOwner && (
-                            <Crown className="w-4 h-4 text-yellow-500" title="Owner" />
-                          )}
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-0.5">
-                          {org.type === 'personal' ? 'Personal Workspace' : 'Team Workspace'}
-                        </p>
-                      </div>
-                    </div>
-                    {currentOrg?.org_id === org.org_id && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">
-                        Active
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs mb-3\">
-                    <div className=\"flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 rounded-full border border-zinc-700\">
-                      <Users className=\"w-3.5 h-3.5 text-zinc-400\" />
-                      <span className=\"text-zinc-400 font-medium\">{org.members?.length || 0}</span>
-                      <span className=\"text-zinc-600\">member{(org.members?.length || 0) !== 1 ? 's' : ''}</span>
-                    </div>
-                    {org.type === 'team' && (
-                      <span className=\"text-zinc-600\">• Click "View Members" to manage</span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {currentOrg?.org_id !== org.org_id && (
-                      <Button
-                        size="sm"
-                        onClick={() => setCurrentOrg(org)}
-                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
-                      >
-                        Switch to this workspace
-                      </Button>
-                    )}
-                    
-                    {/* Show Manage button for all team orgs - admin check happens in backend */}
-                    {org.type === 'team' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedOrg(org)}
-                        className="flex-1 bg-blue-600/10 border-blue-500/50 text-blue-400 hover:bg-blue-600/20 hover:text-blue-300"
-                      >
-                        <Users className="w-3.5 h-3.5 mr-1" />
-                        View Members
-                      </Button>
-                    )}
-                    
-                    {isOwner && org.type === 'team' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setDeletingOrg(org)}
-                        className="text-red-400 hover:text-red-300 hover:bg-zinc-700"
-                        title="Delete Organization"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
+            {organizations.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Building2 className="w-8 h-8 text-zinc-500" />
                 </div>
-              );
-            })}
+                <h3 className="text-lg font-medium text-zinc-300 mb-2">No Organizations Yet</h3>
+                <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
+                  Create your first team organization to collaborate with others and share your API collections.
+                </p>
+                <Button
+                  onClick={() => setCreating(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Organization
+                </Button>
+              </div>
+            ) : (
+              organizations.map(org => {
+                const isOwner = org.owner_id === user?.user_id;
+                
+                return (
+                  <div
+                    key={org.org_id}
+                    className={`p-4 rounded-lg border transition-colors ${
+                      currentOrg?.org_id === org.org_id
+                        ? 'bg-blue-500/10 border-blue-500/50'
+                        : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                          <Building2 className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-medium text-zinc-100">{org.name}</h4>
+                            {isOwner && (
+                              <Crown className="w-4 h-4 text-yellow-500" title="Owner" />
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            {org.type === 'personal' ? 'Personal Workspace' : 'Team Workspace'}
+                          </p>
+                        </div>
+                      </div>
+                      {currentOrg?.org_id === org.org_id && (
+                        <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">
+                          Active
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs mb-3\">
+                      <div className=\"flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 rounded-full border border-zinc-700\">
+                        <Users className=\"w-3.5 h-3.5 text-zinc-400\" />
+                        <span className=\"text-zinc-400 font-medium\">{org.members?.length || 0}</span>
+                        <span className=\"text-zinc-600\">member{(org.members?.length || 0) !== 1 ? 's' : ''}</span>
+                      </div>
+                      {org.type === 'team' && (
+                        <span className=\"text-zinc-600\">• Click "View Members" to manage</span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      {currentOrg?.org_id !== org.org_id && (
+                        <Button
+                          size="sm"
+                          onClick={() => setCurrentOrg(org)}
+                          className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
+                        >
+                          Switch to this workspace
+                        </Button>
+                      )}
+                      
+                      {/* Show Manage button for all team orgs - admin check happens in backend */}
+                      {org.type === 'team' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedOrg(org)}
+                          className="flex-1 bg-blue-600/10 border-blue-500/50 text-blue-400 hover:bg-blue-600/20 hover:text-blue-300"
+                        >
+                          <Users className="w-3.5 h-3.5 mr-1" />
+                          View Members
+                        </Button>
+                      )}
+                      
+                      {isOwner && org.type === 'team' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeletingOrg(org)}
+                          className="text-red-400 hover:text-red-300 hover:bg-zinc-700"
+                          title="Delete Organization"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </>
       ) : (
