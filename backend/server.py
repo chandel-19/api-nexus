@@ -135,12 +135,21 @@ async def create_organization(org_data: OrganizationCreate, request: Request):
     user = await get_current_user(request)
     
     org_id = f"org_{uuid.uuid4().hex[:12]}"
+    
+    # Creator becomes admin
+    creator_member = {
+        "user_id": user["user_id"],
+        "role": "admin",
+        "added_at": datetime.now(timezone.utc)
+    }
+    
     new_org = {
         "org_id": org_id,
         "name": org_data.name,
         "type": org_data.type,
         "owner_id": user["user_id"],
         "members": [user["user_id"]],
+        "member_roles": [creator_member],
         "created_at": datetime.now(timezone.utc)
     }
     
