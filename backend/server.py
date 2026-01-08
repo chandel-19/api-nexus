@@ -175,12 +175,11 @@ async def get_organization(org_id: str, request: Request):
 
 @api_router.put("/organizations/{org_id}", response_model=Organization)
 async def update_organization(org_id: str, org_data: OrganizationUpdate, request: Request):
-    """Update organization"""
+    """Update organization (Admin only)"""
     user = await get_current_user(request)
     
-    org = await db.organizations.find_one({"org_id": org_id, "owner_id": user["user_id"]})
-    if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check admin permission
+    await check_org_permission(db, user["user_id"], org_id, "admin")
     
     update_fields = {k: v for k, v in org_data.dict().items() if v is not None}
     
@@ -193,27 +192,120 @@ async def update_organization(org_id: str, org_data: OrganizationUpdate, request
     return updated_org
 
 
-@api_router.post("/organizations/{org_id}/members")
-async def add_member(org_id: str, member_data: AddMember, request: Request):
-    """Add member to organization"""
+@api_router.delete("/organizations/{org_id}")
+async def delete_organization(org_id: str, request: Request):
+    """Delete organization (Owner only)"""
     user = await get_current_user(request)
     
-    org = await db.organizations.find_one({"org_id": org_id, "owner_id": user["user_id"]})
+    org = await db.organizations.find_one({"org_id": org_id})
     if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    # Only owner can delete
+    if org.get("owner_id") != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Only organization owner can delete")
+    
+    # Can't delete personal workspace
+    if org.get("type") == "personal":
+        raise HTTPException(status_code=400, detail="Cannot delete personal workspace")
+    
+    # Delete organization
+    await db.organizations.delete_one({"org_id": org_id})
+    
+    return {"message": "Organization deleted successfully"}
+
+
+@api_router.post("/organizations/{org_id}/members")
+async def add_member(org_id: str, member_data: AddMember, request: Request):
+    """Add member to organization (Admin only)"""
+    user = await get_current_user(request)
+    
+    # Check admin permission
+    await check_org_permission(db, user["user_id"], org_id, "admin")
     
     # Find user by email
     member = await db.users.find_one({"email": member_data.email}, {"_id": 0})
     if not member:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found. They must sign in at least once.")
     
-    # Add to members list
-    await db.organizations.update_one(
-        {"org_id": org_id},
-        {"$addToSet": {"members": member["user_id"]}}
-    )
+    # Add to organization with specified role
+    await add_user_to_org(db, org_id, member["user_id"], member_data.role)
     
-    return {"message": "Member added successfully"}
+    return {"message": "Member added successfully", "role": member_data.role}
+
+
+@api_router.delete("/organizations/{org_id}/members/{member_user_id}")
+async def remove_member(org_id: str, member_user_id: str, request: Request):
+    """Remove member from organization (Admin only)"""
+    user = await get_current_user(request)
+    
+    # Check admin permission
+    await check_org_permission(db, user["user_id"], org_id, "admin")
+    
+    # Remove user
+    await remove_user_from_org(db, org_id, member_user_id)
+    
+    return {"message": "Member removed successfully"}
+
+
+@api_router.put("/organizations/{org_id}/members/{member_user_id}/role")
+async def update_member_role(org_id: str, member_user_id: str, role_data: UpdateMemberRole, request: Request):
+    """Update member's role in organization (Admin only)"""
+    user = await get_current_user(request)
+    
+    # Check admin permission
+    await check_org_permission(db, user["user_id"], org_id, "admin")
+    
+    # Validate role
+    if role_data.role not in ["admin", "edit", "view"]:
+        raise HTTPException(status_code=400, detail="Invalid role. Must be: admin, edit, or view")
+    
+    # Update role
+    await update_user_role_in_org(db, org_id, member_user_id, role_data.role)
+    
+    return {"message": "Member role updated successfully", "new_role": role_data.role}
+
+
+@api_router.get("/organizations/{org_id}/members")
+async def get_organization_members(org_id: str, request: Request):
+    """Get all members of organization with their roles"""
+    user = await get_current_user(request)
+    
+    # Check if user is in organization
+    await check_org_permission(db, user["user_id"], org_id, "view")
+    
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    member_roles = org.get("member_roles", [])
+    
+    # Get user details for each member
+    members_with_details = []
+    for member in member_roles:
+        user_doc = await db.users.find_one({"user_id": member["user_id"]}, {"_id": 0})
+        if user_doc:
+            members_with_details.append({
+                "user_id": member["user_id"],
+                "email": user_doc["email"],
+                "name": user_doc["name"],
+                "picture": user_doc.get("picture"),
+                "role": member["role"],
+                "added_at": member.get("added_at"),
+                "is_owner": member["user_id"] == org.get("owner_id")
+            })
+    
+    return members_with_details
+
+
+@api_router.get("/organizations/{org_id}/my-role")
+async def get_my_role(org_id: str, request: Request):
+    """Get current user's role in organization"""
+    user = await get_current_user(request)
+    
+    role = await get_user_role_in_org(db, user["user_id"], org_id)
+    
+    return {"role": role, "user_id": user["user_id"]}
 
 
 # ============= Collection Endpoints =============
