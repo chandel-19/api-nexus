@@ -274,32 +274,34 @@ const Sidebar = () => {
                         </span>
                       </button>
 
-                      {/* Collection Actions */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-opacity">
-                            <MoreVertical className="w-4 h-4 text-zinc-400" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-zinc-900 border-zinc-800">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingCollection(collection);
-                            }}
-                            className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
-                          >
-                            <Edit2 className="w-4 h-4 mr-2" />
-                            Edit Collection
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setDeletingCollection(collection)}
-                            className="text-red-400 focus:bg-zinc-800 focus:text-red-300"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Collection
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* Collection Actions (Edit/Admin only) */}
+                      {canEdit && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-opacity">
+                              <MoreVertical className="w-4 h-4 text-zinc-400" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-zinc-900 border-zinc-800">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingCollection(collection);
+                              }}
+                              className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                            >
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Edit Collection
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeletingCollection(collection)}
+                              className="text-red-400 focus:bg-zinc-800 focus:text-red-300"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Collection
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
 
                     {isExpanded && (
