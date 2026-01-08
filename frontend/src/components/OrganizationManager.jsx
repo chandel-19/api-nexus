@@ -320,14 +320,14 @@ const OrganizationManager = ({ onClose }) => {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs mb-3\">
-                      <div className=\"flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 rounded-full border border-zinc-700\">
-                        <Users className=\"w-3.5 h-3.5 text-zinc-400\" />
-                        <span className=\"text-zinc-400 font-medium\">{org.members?.length || 0}</span>
-                        <span className=\"text-zinc-600\">member{(org.members?.length || 0) !== 1 ? 's' : ''}</span>
+                    <div className="flex items-center gap-2 text-xs mb-3">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 rounded-full border border-zinc-700">
+                        <Users className="w-3.5 h-3.5 text-zinc-400" />
+                        <span className="text-zinc-400 font-medium">{org.members?.length || 0}</span>
+                        <span className="text-zinc-600">member{(org.members?.length || 0) !== 1 ? 's' : ''}</span>
                       </div>
                       {org.type === 'team' && (
-                        <span className=\"text-zinc-600\">• Click "View Members" to manage</span>
+                        <span className="text-zinc-600">• Click &quot;View Members&quot; to manage</span>
                       )}
                     </div>
 
