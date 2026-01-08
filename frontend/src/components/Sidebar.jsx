@@ -230,17 +230,19 @@ const Sidebar = () => {
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'collections' ? (
             <div className="py-2">
-              {/* Create Collection Button */}
-              <div className="px-4 pb-2">
-                <Button
-                  onClick={() => setShowCollectionManager(true)}
-                  variant="ghost"
-                  className="w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-dashed border-zinc-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Collection
-                </Button>
-              </div>
+              {/* Create Collection Button (Edit/Admin only) */}
+              {canEdit && (
+                <div className="px-4 pb-2">
+                  <Button
+                    onClick={() => setShowCollectionManager(true)}
+                    variant="ghost"
+                    className="w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-dashed border-zinc-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Collection
+                  </Button>
+                </div>
+              )}
 
               {collections.map(collection => {
                 const collectionRequests = requests.filter(
