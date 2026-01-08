@@ -261,6 +261,7 @@ export const AppProvider = ({ children }) => {
     setCurrentEnv,
     openTabs,
     activeTab,
+    setActiveTab,
     openRequestInTab,
     closeTab,
     createNewRequest,
