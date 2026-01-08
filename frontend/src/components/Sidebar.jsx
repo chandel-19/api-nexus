@@ -54,7 +54,8 @@ const Sidebar = () => {
     organizations,
     setCurrentOrg,
     user,
-    refreshCollections
+    refreshCollections,
+    currentOrgRole
   } = useApp();
 
   const navigate = useNavigate();
@@ -65,6 +66,10 @@ const Sidebar = () => {
   const [showCollectionManager, setShowCollectionManager] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
   const [deletingCollection, setDeletingCollection] = useState(null);
+
+  // Permission checks
+  const canEdit = currentOrgRole === 'edit' || currentOrgRole === 'admin';
+  const isAdmin = currentOrgRole === 'admin';
 
   const toggleCollection = (collectionId) => {
     setExpandedCollections(prev => {
