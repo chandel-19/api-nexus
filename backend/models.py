@@ -12,12 +12,18 @@ class User(BaseModel):
 
 
 # Organization Models
+class OrganizationMember(BaseModel):
+    user_id: str
+    role: str  # "admin", "edit", or "view"
+    added_at: datetime
+
 class Organization(BaseModel):
     org_id: str
     name: str
     type: str  # "personal" or "team"
     owner_id: str
-    members: List[str]
+    members: List[str]  # For backward compatibility
+    member_roles: Optional[List[OrganizationMember]] = []  # New role-based members
     created_at: datetime
 
 
@@ -32,6 +38,11 @@ class OrganizationUpdate(BaseModel):
 
 class AddMember(BaseModel):
     email: str
+    role: str = "edit"  # Default role for new members
+
+
+class UpdateMemberRole(BaseModel):
+    role: str  # "admin", "edit", or "view"
 
 
 # Collection Models
