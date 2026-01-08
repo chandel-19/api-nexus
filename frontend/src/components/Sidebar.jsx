@@ -91,6 +91,35 @@ const Sidebar = () => {
     }
   };
 
+  const handleDeleteCollection = async () => {
+    if (!deletingCollection) return;
+
+    try {
+      await axios.delete(
+        `${BACKEND_URL}/api/collections/${deletingCollection.collection_id}`,
+        { withCredentials: true }
+      );
+
+      toast({
+        title: 'Collection deleted',
+        description: `${deletingCollection.name} has been deleted successfully`,
+      });
+
+      // Refresh collections
+      if (refreshCollections) {
+        await refreshCollections();
+      }
+
+      setDeletingCollection(null);
+    } catch (error) {
+      toast({
+        title: 'Failed to delete collection',
+        description: error.response?.data?.detail || error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const getMethodColor = (method) => {
     const colors = {
       GET: 'text-green-400',
