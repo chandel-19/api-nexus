@@ -378,19 +378,15 @@ async def get_collection(collection_id: str, request: Request):
 
 @api_router.put("/collections/{collection_id}", response_model=Collection)
 async def update_collection(collection_id: str, coll_data: CollectionUpdate, request: Request):
-    """Update collection"""
+    """Update collection (Edit or Admin required)"""
     user = await get_current_user(request)
     
     collection = await db.collections.find_one({"collection_id": collection_id})
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
     
-    # Verify access
-    org = await db.organizations.find_one(
-        {"org_id": collection["org_id"], "members": user["user_id"]}
-    )
-    if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check edit permission
+    await check_org_permission(db, user["user_id"], collection["org_id"], "edit")
     
     update_fields = {k: v for k, v in coll_data.dict().items() if v is not None}
     
@@ -405,19 +401,15 @@ async def update_collection(collection_id: str, coll_data: CollectionUpdate, req
 
 @api_router.delete("/collections/{collection_id}")
 async def delete_collection(collection_id: str, request: Request):
-    """Delete collection"""
+    """Delete collection (Edit or Admin required)"""
     user = await get_current_user(request)
     
     collection = await db.collections.find_one({"collection_id": collection_id})
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
     
-    # Verify access
-    org = await db.organizations.find_one(
-        {"org_id": collection["org_id"], "members": user["user_id"]}
-    )
-    if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check edit permission
+    await check_org_permission(db, user["user_id"], collection["org_id"], "edit")
     
     await db.collections.delete_one({"collection_id": collection_id})
     return {"message": "Collection deleted successfully"}
