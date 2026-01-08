@@ -505,19 +505,15 @@ async def get_request(request_id: str, request: Request):
 
 @api_router.put("/requests/{request_id}", response_model=RequestModel)
 async def update_request(request_id: str, req_data: RequestUpdate, request: Request):
-    """Update request"""
+    """Update request (Edit or Admin required)"""
     user = await get_current_user(request)
     
     req = await db.requests.find_one({"request_id": request_id})
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
     
-    # Verify access
-    org = await db.organizations.find_one(
-        {"org_id": req["org_id"], "members": user["user_id"]}
-    )
-    if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check edit permission
+    await check_org_permission(db, user["user_id"], req["org_id"], "edit")
     
     update_fields = {}
     for field, value in req_data.dict().items():
@@ -542,19 +538,15 @@ async def update_request(request_id: str, req_data: RequestUpdate, request: Requ
 
 @api_router.delete("/requests/{request_id}")
 async def delete_request(request_id: str, request: Request):
-    """Delete request"""
+    """Delete request (Edit or Admin required)"""
     user = await get_current_user(request)
     
     req = await db.requests.find_one({"request_id": request_id})
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
     
-    # Verify access
-    org = await db.organizations.find_one(
-        {"org_id": req["org_id"], "members": user["user_id"]}
-    )
-    if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check edit permission
+    await check_org_permission(db, user["user_id"], req["org_id"], "edit")
     
     await db.requests.delete_one({"request_id": request_id})
     return {"message": "Request deleted successfully"}
