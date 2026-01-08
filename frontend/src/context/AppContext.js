@@ -232,11 +232,14 @@ export const AppProvider = ({ children }) => {
   // Keyboard shortcut for command palette
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Cmd/Ctrl + K - Command Palette (works everywhere)
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(prev => !prev);
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+      
+      // Ctrl + T - New Request (Windows/Linux only - Cmd+T conflicts with browser on Mac)
+      if (e.ctrlKey && !e.metaKey && e.key === 't') {
         e.preventDefault();
         createNewRequest();
       }
