@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Save, Trash2, Plus, X, Copy, Folder } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
