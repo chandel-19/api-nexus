@@ -331,7 +331,7 @@ const RequestBuilder = ({ request }) => {
               onClick={handleSaveAs}
               variant="ghost"
               className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-              title="Save As (⌘+Shift+S or Ctrl+Shift+S)"
+              title="Save As"
             >
               <Copy className="w-4 h-4" />
             </Button>
