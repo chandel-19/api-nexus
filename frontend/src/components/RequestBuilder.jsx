@@ -55,24 +55,12 @@ const RequestBuilder = ({ request }) => {
         handleSave();
       }
 
-      // Cmd/Ctrl + Shift + S - Save As
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'S') {
-        e.preventDefault();
-        handleSaveAs();
-      }
-
       // Cmd/Ctrl + Enter - Send Request
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         if (request.url && !loading) {
           handleSendRequest();
         }
-      }
-
-      // Cmd/Ctrl + W - Close Tab
-      if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
-        e.preventDefault();
-        closeTab(request.request_id);
       }
 
       // Cmd/Ctrl + D - Delete (for saved requests)
