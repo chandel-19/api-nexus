@@ -321,6 +321,7 @@ const RequestBuilder = ({ request }) => {
               onClick={handleSendRequest}
               disabled={loading || !request.url}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 transition-colors"
+              title="Send Request (⌘+Enter or Ctrl+Enter)"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -333,7 +334,7 @@ const RequestBuilder = ({ request }) => {
               onClick={handleSave}
               variant="ghost"
               className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-              title="Save"
+              title="Save (⌘+S or Ctrl+S)"
             >
               <Save className="w-4 h-4" />
             </Button>
@@ -342,7 +343,7 @@ const RequestBuilder = ({ request }) => {
               onClick={handleSaveAs}
               variant="ghost"
               className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-              title="Save As"
+              title="Save As (⌘+Shift+S or Ctrl+Shift+S)"
             >
               <Copy className="w-4 h-4" />
             </Button>
@@ -352,7 +353,7 @@ const RequestBuilder = ({ request }) => {
                 onClick={() => setShowDeleteDialog(true)}
                 variant="ghost"
                 className="text-red-400 hover:text-red-300 hover:bg-zinc-800"
-                title="Delete"
+                title="Delete (⌘+D or Ctrl+D)"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
