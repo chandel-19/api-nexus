@@ -73,11 +73,30 @@ const TabBar = () => {
                   Browse Collections
                 </button>
               </div>
-              <div className="mt-6 text-xs text-zinc-600">
-                <kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800">⌘K</kbd>
-                <span className="mx-2">or</span>
-                <kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800">⌘T</kbd>
-                <span className="ml-2">for quick access</span>
+              <div className="mt-8 text-xs text-zinc-600 space-y-2">
+                <div className="text-sm font-semibold text-zinc-500 mb-3">⌨️ Keyboard Shortcuts</div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-left max-w-md mx-auto">
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + K</kbd></div>
+                  <div className="text-zinc-500">Command Palette</div>
+                  
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + T</kbd></div>
+                  <div className="text-zinc-500">New Request</div>
+                  
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + S</kbd></div>
+                  <div className="text-zinc-500">Save Request</div>
+                  
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + ⇧ + S</kbd></div>
+                  <div className="text-zinc-500">Save As</div>
+                  
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + Enter</kbd></div>
+                  <div className="text-zinc-500">Send Request</div>
+                  
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + W</kbd></div>
+                  <div className="text-zinc-500">Close Tab</div>
+                  
+                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + D</kbd></div>
+                  <div className="text-zinc-500">Delete Request</div>
+                </div>
               </div>
             </div>
           </div>
