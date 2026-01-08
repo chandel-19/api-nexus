@@ -79,23 +79,17 @@ const TabBar = () => {
                   <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + K</kbd></div>
                   <div className="text-zinc-500">Command Palette</div>
                   
-                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + T</kbd></div>
-                  <div className="text-zinc-500">New Request</div>
-                  
                   <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + S</kbd></div>
                   <div className="text-zinc-500">Save Request</div>
-                  
-                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + ⇧ + S</kbd></div>
-                  <div className="text-zinc-500">Save As</div>
                   
                   <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + Enter</kbd></div>
                   <div className="text-zinc-500">Send Request</div>
                   
-                  <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + W</kbd></div>
-                  <div className="text-zinc-500">Close Tab</div>
-                  
                   <div><kbd className="px-2 py-1 bg-zinc-900 rounded border border-zinc-800 text-zinc-500">⌘/Ctrl + D</kbd></div>
                   <div className="text-zinc-500">Delete Request</div>
+                </div>
+                <div className="text-xs text-zinc-600 mt-4 italic">
+                  Tip: Use "New Request" button or Ctrl+T (Windows/Linux only)
                 </div>
               </div>
             </div>
