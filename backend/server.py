@@ -330,13 +330,11 @@ async def get_collections(org_id: str, request: Request):
 
 @api_router.post("/organizations/{org_id}/collections", response_model=Collection)
 async def create_collection(org_id: str, coll_data: CollectionCreate, request: Request):
-    """Create new collection"""
+    """Create new collection (Edit or Admin required)"""
     user = await get_current_user(request)
     
-    # Verify access
-    org = await db.organizations.find_one({"org_id": org_id, "members": user["user_id"]})
-    if not org:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check edit permission
+    await check_org_permission(db, user["user_id"], org_id, "edit")
     
     collection_id = f"col_{uuid.uuid4().hex[:12]}"
     new_collection = {
