@@ -14,7 +14,7 @@ import time
 import json
 
 from models import (
-    User, Organization, OrganizationCreate, OrganizationUpdate, AddMember,
+    User, Organization, OrganizationCreate, OrganizationUpdate, AddMember, UpdateMemberRole,
     Collection, CollectionCreate, CollectionUpdate,
     Request as RequestModel, RequestCreate, RequestUpdate, RequestExecute,
     History, Environment, EnvironmentCreate, EnvironmentUpdate,
@@ -23,6 +23,10 @@ from models import (
 from auth import (
     exchange_session_id, create_or_update_user, create_session,
     get_current_user, delete_session
+)
+from permissions import (
+    get_user_role_in_org, check_org_permission, is_org_admin,
+    add_user_to_org, remove_user_from_org, update_user_role_in_org
 )
 
 ROOT_DIR = Path(__file__).parent
