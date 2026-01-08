@@ -437,7 +437,7 @@ async def get_org_requests(org_id: str, request: Request):
 
 @api_router.post("/requests", response_model=RequestModel)
 async def create_request(req_data: RequestCreate, request: Request):
-    """Create new request"""
+    """Create new request (Edit or Admin required)"""
     user = await get_current_user(request)
     
     # Get org_id from collection or require it
@@ -453,6 +453,9 @@ async def create_request(req_data: RequestCreate, request: Request):
         if not org:
             raise HTTPException(status_code=400, detail="No organization found")
         org_id = org["org_id"]
+    
+    # Check edit permission
+    await check_org_permission(db, user["user_id"], org_id, "edit")
     
     request_id = f"req_{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc)
