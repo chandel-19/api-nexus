@@ -390,6 +390,47 @@ const Sidebar = () => {
           <OrganizationManager onClose={() => setShowOrgManager(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* Collection Manager Dialog - Create */}
+      <CollectionManager
+        isOpen={showCollectionManager}
+        onClose={() => setShowCollectionManager(false)}
+        mode="create"
+      />
+
+      {/* Collection Manager Dialog - Edit */}
+      {editingCollection && (
+        <CollectionManager
+          isOpen={!!editingCollection}
+          onClose={() => setEditingCollection(null)}
+          collection={editingCollection}
+          mode="edit"
+        />
+      )}
+
+      {/* Delete Collection Confirmation */}
+      <AlertDialog open={!!deletingCollection} onOpenChange={() => setDeletingCollection(null)}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-100">Delete Collection?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to delete "{deletingCollection?.name}"? This will permanently
+              delete the collection and all its requests. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border-zinc-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCollection}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Collection
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
