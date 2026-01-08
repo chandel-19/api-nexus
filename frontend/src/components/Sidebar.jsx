@@ -193,7 +193,9 @@ const Sidebar = () => {
         <div className="p-4">
           <Button
             onClick={createNewRequest}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            disabled={!canEdit}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!canEdit ? "You need Edit or Admin access to create requests" : "Create a new request"}
           >
             <Plus className="w-4 h-4 mr-2" />
             New Request
