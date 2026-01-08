@@ -76,6 +76,13 @@ export const AppProvider = ({ children }) => {
     const loadOrgData = async () => {
       if (currentOrg) {
         try {
+          // Load user's role in current org
+          const roleRes = await axios.get(
+            `${API}/organizations/${currentOrg.org_id}/my-role`,
+            { withCredentials: true }
+          );
+          setCurrentOrgRole(roleRes.data.role);
+
           // Load collections
           const collectionsRes = await axios.get(
             `${API}/organizations/${currentOrg.org_id}/collections`,
