@@ -20,6 +20,7 @@ export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(location.state?.user || null);
   const [organizations, setOrganizations] = useState([]);
   const [currentOrg, setCurrentOrg] = useState(null);
+  const [currentOrgRole, setCurrentOrgRole] = useState(null);
   const [collections, setCollections] = useState([]);
   const [requests, setRequests] = useState([]);
   const [history, setHistory] = useState([]);
