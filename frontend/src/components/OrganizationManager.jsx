@@ -318,15 +318,16 @@ const OrganizationManager = ({ onClose }) => {
                       </Button>
                     )}
                     
+                    {/* Show Manage button for all team orgs - admin check happens in backend */}
                     {org.type === 'team' && (
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => setSelectedOrg(org)}
-                        className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700"
+                        className="flex-1 bg-blue-600/10 border-blue-500/50 text-blue-400 hover:bg-blue-600/20 hover:text-blue-300"
                       >
                         <Users className="w-3.5 h-3.5 mr-1" />
-                        Manage
+                        View Members
                       </Button>
                     )}
                     
@@ -336,6 +337,7 @@ const OrganizationManager = ({ onClose }) => {
                         variant="ghost"
                         onClick={() => setDeletingOrg(org)}
                         className="text-red-400 hover:text-red-300 hover:bg-zinc-700"
+                        title="Delete Organization"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
