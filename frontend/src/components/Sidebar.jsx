@@ -216,6 +216,18 @@ const Sidebar = () => {
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'collections' ? (
             <div className="py-2">
+              {/* Create Collection Button */}
+              <div className="px-4 pb-2">
+                <Button
+                  onClick={() => setShowCollectionManager(true)}
+                  variant="ghost"
+                  className="w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-dashed border-zinc-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Collection
+                </Button>
+              </div>
+
               {collections.map(collection => {
                 const collectionRequests = requests.filter(
                   r => r.collection_id === collection.collection_id
@@ -224,26 +236,55 @@ const Sidebar = () => {
 
                 return (
                   <div key={collection.collection_id}>
-                    <button
-                      onClick={() => toggleCollection(collection.collection_id)}
-                      className="w-full px-4 py-2 flex items-center gap-2 hover:bg-zinc-800/50 transition-colors group"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-zinc-500" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-zinc-500" />
-                      )}
-                      <Folder
-                        className="w-4 h-4"
-                        style={{ color: collection.color }}
-                      />
-                      <span className="flex-1 text-left text-sm text-zinc-300 truncate">
-                        {collection.name}
-                      </span>
-                      <span className="text-xs text-zinc-600">
-                        {collectionRequests.length}
-                      </span>
-                    </button>
+                    <div className="group px-4 py-2 flex items-center gap-2 hover:bg-zinc-800/50 transition-colors">
+                      <button
+                        onClick={() => toggleCollection(collection.collection_id)}
+                        className="flex items-center gap-2 flex-1 min-w-0"
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                        )}
+                        <Folder
+                          className="w-4 h-4 flex-shrink-0"
+                          style={{ color: collection.color }}
+                        />
+                        <span className="flex-1 text-left text-sm text-zinc-300 truncate">
+                          {collection.name}
+                        </span>
+                        <span className="text-xs text-zinc-600 flex-shrink-0">
+                          {collectionRequests.length}
+                        </span>
+                      </button>
+
+                      {/* Collection Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-opacity">
+                            <MoreVertical className="w-4 h-4 text-zinc-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-zinc-900 border-zinc-800">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingCollection(collection);
+                            }}
+                            className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                          >
+                            <Edit2 className="w-4 h-4 mr-2" />
+                            Edit Collection
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeletingCollection(collection)}
+                            className="text-red-400 focus:bg-zinc-800 focus:text-red-300"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Collection
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
                     {isExpanded && (
                       <div className="ml-4">
@@ -273,6 +314,8 @@ const Sidebar = () => {
               {collections.length === 0 && (
                 <div className="px-4 py-8 text-center text-zinc-500 text-sm">
                   No collections yet
+                  <br />
+                  <span className="text-xs text-zinc-600">Click "Create Collection" to get started</span>
                 </div>
               )}
             </div>
