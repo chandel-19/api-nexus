@@ -264,6 +264,7 @@ export const AppProvider = ({ children }) => {
     organizations,
     currentOrg,
     setCurrentOrg,
+    currentOrgRole,
     collections,
     requests,
     history,
