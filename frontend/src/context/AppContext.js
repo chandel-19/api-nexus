@@ -113,6 +113,28 @@ export const AppProvider = ({ children }) => {
     loadOrgData();
   }, [currentOrg]);
 
+  // Refresh collections function
+  const refreshCollections = async () => {
+    if (currentOrg) {
+      try {
+        const collectionsRes = await axios.get(
+          `${API}/organizations/${currentOrg.org_id}/collections`,
+          { withCredentials: true }
+        );
+        setCollections(collectionsRes.data);
+
+        // Also refresh requests in case they were affected
+        const requestsRes = await axios.get(
+          `${API}/organizations/${currentOrg.org_id}/requests`,
+          { withCredentials: true }
+        );
+        setRequests(requestsRes.data);
+      } catch (error) {
+        console.error('Failed to refresh collections:', error);
+      }
+    }
+  };
+
   // Add request to tab
   const openRequestInTab = (request) => {
     const existingTab = openTabs.find(tab => tab.request_id === request.request_id);
