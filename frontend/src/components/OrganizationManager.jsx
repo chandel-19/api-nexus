@@ -352,20 +352,28 @@ const OrganizationManager = ({ onClose }) => {
         <>
           {/* Member Management View */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-medium text-zinc-100">{selectedOrg.name}</h3>
-                <p className="text-xs text-zinc-500">Manage members and permissions</p>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-800">
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedOrg(null)}
+                  className="text-zinc-400 hover:text-zinc-100"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Back
+                </Button>
+                <div className="h-8 w-px bg-zinc-700"></div>
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-400" />
+                    {selectedOrg.name}
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Manage members and permissions
+                  </p>
+                </div>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedOrg(null)}
-                className="text-zinc-400 hover:text-zinc-100"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Back
-              </Button>
             </div>
 
             {/* Add Member Section (Admin Only) */}
