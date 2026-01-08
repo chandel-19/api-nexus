@@ -10,7 +10,10 @@ import {
   Database,
   Building2,
   LogOut,
-  Users
+  Users,
+  Edit2,
+  Trash2,
+  MoreVertical
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
@@ -22,10 +25,22 @@ import {
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import EnvironmentManager from './EnvironmentManager';
 import OrganizationManager from './OrganizationManager';
+import CollectionManager from './CollectionManager';
+import { toast } from '../hooks/use-toast';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
