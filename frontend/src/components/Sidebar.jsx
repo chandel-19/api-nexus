@@ -178,6 +178,15 @@ const Sidebar = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          {/* Role Badge */}
+          {currentOrgRole && (
+            <div className="mt-2 flex items-center gap-2 px-2 py-1 bg-zinc-800 rounded text-xs">
+              {currentOrgRole === 'admin' && <span className="text-purple-400">👑 Admin</span>}
+              {currentOrgRole === 'edit' && <span className="text-blue-400">✏️ Editor</span>}
+              {currentOrgRole === 'view' && <span className="text-zinc-400">👁️ Viewer</span>}
+            </div>
+          )}
         </div>
 
         {/* New Request Button */}
