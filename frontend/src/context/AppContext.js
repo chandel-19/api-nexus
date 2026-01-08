@@ -266,6 +266,7 @@ export const AppProvider = ({ children }) => {
     createNewRequest,
     updateRequest,
     saveRequest,
+    refreshCollections,
     commandPaletteOpen,
     setCommandPaletteOpen,
     loading
