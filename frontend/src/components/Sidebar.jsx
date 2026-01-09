@@ -48,6 +48,7 @@ const Sidebar = () => {
   const {
     collections,
     requests,
+    history,
     openRequestInTab,
     createNewRequest,
     currentOrg,
@@ -56,7 +57,8 @@ const Sidebar = () => {
     user,
     refreshCollections,
     currentOrgRole,
-    logout
+    logout,
+    clearHistory
   } = useApp();
 
   const navigate = useNavigate();
