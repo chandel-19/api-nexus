@@ -133,6 +133,38 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Add request to local history (max 100 items)
+  const addToHistory = (request, response) => {
+    const historyItem = {
+      id: `hist_${Date.now()}`,
+      method: request.method,
+      url: request.url,
+      name: request.name || 'Untitled Request',
+      status: response?.status || 0,
+      statusText: response?.statusText || 'Error',
+      time: response?.time || 0,
+      timestamp: new Date().toISOString(),
+      request: {
+        headers: request.headers,
+        params: request.params,
+        body: request.body,
+        auth: request.auth
+      }
+    };
+
+    setHistory(prev => {
+      const newHistory = [historyItem, ...prev].slice(0, 100);
+      localStorage.setItem('request_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  // Clear history
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('request_history');
+  };
+
   const openRequestInTab = (request) => {
     const existingTab = openTabs.find(tab => tab.request_id === request.request_id);
     if (existingTab) {
