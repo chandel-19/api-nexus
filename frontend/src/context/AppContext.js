@@ -52,13 +52,10 @@ export const AppProvider = ({ children }) => {
   // Initialize: Check for user from location state first (from AuthCallback), then validate with API
   useEffect(() => {
     const initialize = async () => {
-      if (initialized) return;
-      setInitialized(true);
-
       // Check if user data was passed from auth callback
       const userFromState = location.state?.user;
       
-      if (userFromState) {
+      if (userFromState && !user) {
         // User came from auth callback - trust this data and set user immediately
         console.log('User from auth callback:', userFromState);
         setUser(userFromState);
@@ -92,8 +89,10 @@ export const AppProvider = ({ children }) => {
           }
         }
         setLoading(false);
-      } else {
+        setInitialized(true);
+      } else if (!initialized && !userFromState) {
         // No user in state - fetch from API (page refresh or direct navigation)
+        setInitialized(true);
         try {
           const response = await axios.get(`${API}/auth/me`, {
             withCredentials: true
@@ -119,7 +118,7 @@ export const AppProvider = ({ children }) => {
     
     initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.state?.user]);
 
   // Load organization-specific data
   useEffect(() => {
