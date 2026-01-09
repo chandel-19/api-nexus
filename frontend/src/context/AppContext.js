@@ -190,7 +190,9 @@ export const AppProvider = ({ children }) => {
   const logout = async () => {
     try {
       await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
-    } catch (e) {}
+    } catch (e) {
+      // Ignore logout errors
+    }
     localStorage.removeItem('auth_user');
     localStorage.removeItem('auth_orgs');
     localStorage.removeItem('auth_timestamp');
