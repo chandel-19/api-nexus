@@ -262,7 +262,8 @@ export const AppProvider = ({ children }) => {
     collections, requests, history, environments, currentEnv, setCurrentEnv,
     openTabs, activeTab, setActiveTab, openRequestInTab, closeTab,
     createNewRequest, updateRequest, saveRequest, refreshCollections,
-    commandPaletteOpen, setCommandPaletteOpen, loading, logout
+    commandPaletteOpen, setCommandPaletteOpen, loading, logout,
+    addToHistory, clearHistory
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
