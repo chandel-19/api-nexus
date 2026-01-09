@@ -55,7 +55,8 @@ const Sidebar = () => {
     setCurrentOrg,
     user,
     refreshCollections,
-    currentOrgRole
+    currentOrgRole,
+    logout
   } = useApp();
 
   const navigate = useNavigate();
