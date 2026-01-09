@@ -63,6 +63,9 @@ export const AppProvider = ({ children }) => {
         console.log('User from auth callback:', userFromState);
         setUser(userFromState);
         
+        // Small delay to ensure cookie is properly set before making API calls
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Load organizations with the session cookie
         try {
           const orgsResponse = await axios.get(`${API}/organizations`, {
@@ -74,6 +77,19 @@ export const AppProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('Failed to load organizations:', error);
+          // Retry once after a longer delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          try {
+            const retryResponse = await axios.get(`${API}/organizations`, {
+              withCredentials: true
+            });
+            setOrganizations(retryResponse.data);
+            if (retryResponse.data.length > 0) {
+              setCurrentOrg(retryResponse.data[0]);
+            }
+          } catch (retryError) {
+            console.error('Retry also failed:', retryError);
+          }
         }
         setLoading(false);
       } else {
