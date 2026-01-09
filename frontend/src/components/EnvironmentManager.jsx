@@ -193,11 +193,22 @@ const EnvironmentManager = ({ onClose }) => {
                   variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditingEnv(env);
+                    setEditingEnv({ ...env });
                   }}
                   className="text-zinc-400 hover:text-zinc-100"
                 >
                   <Edit2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeletingEnv(env);
+                  }}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
             </div>
