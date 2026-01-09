@@ -5,21 +5,34 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from '../hooks/use-toast';
 import axios from 'axios';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const EnvironmentManager = ({ onClose }) => {
-  const { environments, currentEnv, setCurrentEnv, currentOrg } = useApp();
+  const { environments, currentEnv, setCurrentEnv, currentOrg, refreshEnvironments } = useApp();
   const [editingEnv, setEditingEnv] = useState(null);
+  const [deletingEnv, setDeletingEnv] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [newEnv, setNewEnv] = useState({
     name: '',
     variables: [{ key: '', value: '', enabled: true }]
   });
 
   const handleCreateEnvironment = async () => {
+    setLoading(true);
     try {
-      const response = await axios.post(
+      await axios.post(
         `${BACKEND_URL}/api/organizations/${currentOrg.org_id}/environments`,
         newEnv,
         { withCredentials: true }
@@ -32,13 +45,67 @@ const EnvironmentManager = ({ onClose }) => {
       
       setCreating(false);
       setNewEnv({ name: '', variables: [{ key: '', value: '', enabled: true }] });
-      window.location.reload(); // Reload to refresh environments
+      if (refreshEnvironments) await refreshEnvironments();
     } catch (error) {
       toast({
         title: 'Failed to create environment',
-        description: error.message,
+        description: error.response?.data?.detail || error.message,
         variant: 'destructive'
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateEnvironment = async () => {
+    setLoading(true);
+    try {
+      await axios.put(
+        `${BACKEND_URL}/api/environments/${editingEnv.env_id}`,
+        { name: editingEnv.name, variables: editingEnv.variables },
+        { withCredentials: true }
+      );
+      toast({
+        title: 'Environment updated',
+        description: 'Changes saved successfully',
+      });
+      setEditingEnv(null);
+      if (refreshEnvironments) await refreshEnvironments();
+    } catch (error) {
+      toast({
+        title: 'Update failed',
+        description: error.response?.data?.detail || error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEnvironment = async () => {
+    setLoading(true);
+    try {
+      await axios.delete(
+        `${BACKEND_URL}/api/environments/${deletingEnv.env_id}`,
+        { withCredentials: true }
+      );
+      toast({
+        title: 'Environment deleted',
+        description: `${deletingEnv.name} has been deleted`,
+      });
+      setDeletingEnv(null);
+      if (currentEnv?.env_id === deletingEnv.env_id) {
+        setCurrentEnv(null);
+      }
+      if (refreshEnvironments) await refreshEnvironments();
+    } catch (error) {
+      toast({
+        title: 'Delete failed',
+        description: error.response?.data?.detail || error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
