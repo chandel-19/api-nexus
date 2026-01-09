@@ -9,28 +9,21 @@ const AuthCallback = () => {
   const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Prevent double processing in StrictMode
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
     const processAuth = async () => {
       try {
-        // Extract session_id from URL fragment
         const hash = window.location.hash;
         const params = new URLSearchParams(hash.substring(1));
         const sessionId = params.get('session_id');
 
-        console.log('Processing auth callback...', { hash, sessionId });
-
         if (!sessionId) {
-          console.error('No session_id found in URL');
           navigate('/login');
           return;
         }
 
-        console.log('Exchanging session_id for user data...');
-
-        // Exchange session_id for user data - this sets the cookie
+        // Exchange session_id for user data
         const response = await axios.post(
           `${BACKEND_URL}/api/auth/session`,
           { session_id: sessionId },
@@ -38,49 +31,34 @@ const AuthCallback = () => {
         );
 
         const userData = response.data;
-        console.log('Auth successful! User:', userData);
 
-        // Wait for cookie to be fully processed by browser
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Wait for cookie to be set
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Verify cookie is working by fetching organizations
-        // This ensures the cookie is properly set before navigation
+        // Fetch organizations with retries
         let organizations = [];
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (retryCount < maxRetries) {
+        for (let i = 0; i < 5; i++) {
           try {
             const orgsResponse = await axios.get(
               `${BACKEND_URL}/api/organizations`,
               { withCredentials: true }
             );
             organizations = orgsResponse.data;
-            console.log('Organizations fetched successfully:', organizations.length);
             break;
-          } catch (error) {
-            retryCount++;
-            console.log(`Cookie not ready yet, retry ${retryCount}/${maxRetries}`);
-            if (retryCount < maxRetries) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
+          } catch (e) {
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
 
-        // Navigate to dashboard with user data AND organizations
-        navigate('/dashboard', { 
-          state: { 
-            user: userData, 
-            organizations: organizations,
-            authComplete: true 
-          }, 
-          replace: true 
-        });
+        // Store in localStorage - this is synchronous and reliable
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+        localStorage.setItem('auth_orgs', JSON.stringify(organizations));
+        localStorage.setItem('auth_timestamp', Date.now().toString());
+
+        // Navigate to dashboard
+        window.location.href = '/dashboard';
       } catch (error) {
         console.error('Auth callback error:', error);
-        console.error('Error details:', error.response?.data);
-        
-        // Show user-friendly error
         alert('Authentication failed. Please try again.');
         navigate('/login');
       }
@@ -94,7 +72,6 @@ const AuthCallback = () => {
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-zinc-700 border-t-blue-600 mb-4"></div>
         <p className="text-zinc-400">Completing sign in...</p>
-        <p className="text-zinc-600 text-sm mt-2">Please wait while we verify your credentials</p>
       </div>
     </div>
   );
