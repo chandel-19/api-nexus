@@ -96,12 +96,11 @@ export const AppProvider = ({ children }) => {
     const loadOrgData = async () => {
       if (currentOrg && user) {
         try {
-          const [roleRes, collectionsRes, requestsRes, envsRes, historyRes] = await Promise.all([
+          const [roleRes, collectionsRes, requestsRes, envsRes] = await Promise.all([
             axios.get(`${API}/organizations/${currentOrg.org_id}/my-role`, { withCredentials: true }),
             axios.get(`${API}/organizations/${currentOrg.org_id}/collections`, { withCredentials: true }),
             axios.get(`${API}/organizations/${currentOrg.org_id}/requests`, { withCredentials: true }),
-            axios.get(`${API}/organizations/${currentOrg.org_id}/environments`, { withCredentials: true }),
-            axios.get(`${API}/organizations/${currentOrg.org_id}/history`, { withCredentials: true })
+            axios.get(`${API}/organizations/${currentOrg.org_id}/environments`, { withCredentials: true })
           ]);
 
           setCurrentOrgRole(roleRes.data.role);
@@ -109,7 +108,7 @@ export const AppProvider = ({ children }) => {
           setRequests(requestsRes.data);
           setEnvironments(envsRes.data);
           if (envsRes.data.length > 0) setCurrentEnv(envsRes.data[0]);
-          setHistory(historyRes.data);
+          // Note: History is managed locally via localStorage, not from API
         } catch (error) {
           console.error('Failed to load org data:', error);
         }
