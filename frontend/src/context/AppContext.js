@@ -274,7 +274,7 @@ export const AppProvider = ({ children }) => {
     user, setUser, organizations, currentOrg, setCurrentOrg, currentOrgRole,
     collections, requests, history, environments, currentEnv, setCurrentEnv,
     openTabs, activeTab, setActiveTab, openRequestInTab, closeTab,
-    createNewRequest, updateRequest, saveRequest, refreshCollections,
+    createNewRequest, updateRequest, saveRequest, refreshCollections, refreshEnvironments,
     commandPaletteOpen, setCommandPaletteOpen, loading, logout,
     addToHistory, clearHistory
   };
