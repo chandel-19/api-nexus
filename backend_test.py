@@ -12,7 +12,7 @@ import sys
 from datetime import datetime, timezone, timedelta
 
 # Configuration
-BACKEND_URL = "https://endpoint-dash.preview.emergentagent.com/api"
+BACKEND_URL = "https://rayquest.preview.emergentagent.com/api"
 TEST_USER_EMAIL = f"test.user.{int(time.time())}@example.com"
 TEST_USER_NAME = "Test User API"
 
