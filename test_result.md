@@ -210,7 +210,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Environment Management"
+    - "View Members Functionality"
   stuck_tasks:
     - "Environment Management"
   test_all: false
