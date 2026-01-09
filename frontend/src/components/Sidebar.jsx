@@ -330,15 +330,69 @@ const Sidebar = () => {
                 <div className="px-4 py-8 text-center text-zinc-500 text-sm">
                   No collections yet
                   <br />
-                  <span className="text-xs text-zinc-600">Click "Create Collection" to get started</span>
+                  <span className="text-xs text-zinc-600">Click &quot;Create Collection&quot; to get started</span>
                 </div>
               )}
             </div>
           ) : (
             <div className="py-2">
-              <div className="px-4 py-2 text-sm text-zinc-500">
-                Recent requests will appear here
-              </div>
+              {history.length > 0 ? (
+                <>
+                  <div className="px-4 pb-2 flex items-center justify-between">
+                    <span className="text-xs text-zinc-500">{history.length} request{history.length !== 1 ? 's' : ''}</span>
+                    <button
+                      onClick={clearHistory}
+                      className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {history.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => openRequestInTab({
+                        request_id: `req_new_${Date.now()}`,
+                        name: item.name,
+                        method: item.method,
+                        url: item.url,
+                        headers: item.request?.headers || [],
+                        params: item.request?.params || [],
+                        body: item.request?.body || { type: 'none', content: '' },
+                        auth: item.request?.auth || { type: 'none' }
+                      })}
+                      className="w-full px-4 py-2 flex items-center gap-2 hover:bg-zinc-800/50 transition-colors group"
+                    >
+                      <span className={`text-xs font-medium min-w-[42px] ${getMethodColor(item.method)}`}>
+                        {item.method}
+                      </span>
+                      <div className="flex-1 text-left overflow-hidden">
+                        <p className="text-sm text-zinc-400 truncate group-hover:text-zinc-200 transition-colors">
+                          {item.url || item.name}
+                        </p>
+                        <p className="text-xs text-zinc-600 truncate">
+                          {item.status > 0 ? (
+                            <span className={item.status < 400 ? 'text-green-500' : 'text-red-400'}>
+                              {item.status}
+                            </span>
+                          ) : (
+                            <span className="text-red-400">Error</span>
+                          )}
+                          <span className="mx-1">•</span>
+                          {item.time}ms
+                          <span className="mx-1">•</span>
+                          {new Date(item.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <div className="px-4 py-8 text-center text-zinc-500 text-sm">
+                  No history yet
+                  <br />
+                  <span className="text-xs text-zinc-600">Send a request to see it here</span>
+                </div>
+              )}
             </div>
           )}
         </div>
