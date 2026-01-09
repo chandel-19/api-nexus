@@ -85,16 +85,8 @@ const Sidebar = () => {
   };
 
   const handleLogout = async () => {
-    try {
-      await axios.post(`${BACKEND_URL}/api/auth/logout`, {}, {
-        withCredentials: true
-      });
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      // Redirect anyway
-      navigate('/login');
-    }
+    await logout();
+    navigate('/login');
   };
 
   const handleDeleteCollection = async () => {
