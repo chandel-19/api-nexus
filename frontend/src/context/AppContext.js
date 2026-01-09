@@ -32,95 +32,61 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
-  // Helper function to load organizations
-  const loadOrganizations = async () => {
-    try {
-      const response = await axios.get(`${API}/organizations`, {
-        withCredentials: true
-      });
-      setOrganizations(response.data);
-      if (response.data.length > 0 && !currentOrg) {
-        setCurrentOrg(response.data[0]);
-      }
-      return response.data;
-    } catch (error) {
-      console.error('Failed to load organizations:', error);
-      return [];
-    }
-  };
-
-  // Initialize: Check for user from location state first (from AuthCallback), then validate with API
+  // Initialize based on location state (from AuthCallback) or API
   useEffect(() => {
     const initialize = async () => {
-      // Check if user data was passed from auth callback
+      // Get data from auth callback navigation state
       const userFromState = location.state?.user;
-      
-      if (userFromState && !user) {
-        // User came from auth callback - trust this data and set user immediately
-        console.log('User from auth callback:', userFromState);
+      const orgsFromState = location.state?.organizations;
+      const authComplete = location.state?.authComplete;
+
+      // Case 1: Coming from AuthCallback with pre-fetched data
+      if (authComplete && userFromState) {
+        console.log('Initializing from auth callback state');
         setUser(userFromState);
         
-        // Small delay to ensure cookie is properly set before making API calls
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Load organizations with the session cookie
-        try {
-          const orgsResponse = await axios.get(`${API}/organizations`, {
-            withCredentials: true
-          });
-          setOrganizations(orgsResponse.data);
-          if (orgsResponse.data.length > 0) {
-            setCurrentOrg(orgsResponse.data[0]);
-          }
-        } catch (error) {
-          console.error('Failed to load organizations:', error);
-          // Retry once after a longer delay
-          await new Promise(resolve => setTimeout(resolve, 500));
-          try {
-            const retryResponse = await axios.get(`${API}/organizations`, {
-              withCredentials: true
-            });
-            setOrganizations(retryResponse.data);
-            if (retryResponse.data.length > 0) {
-              setCurrentOrg(retryResponse.data[0]);
-            }
-          } catch (retryError) {
-            console.error('Retry also failed:', retryError);
-          }
+        if (orgsFromState && orgsFromState.length > 0) {
+          setOrganizations(orgsFromState);
+          setCurrentOrg(orgsFromState[0]);
         }
+        
         setLoading(false);
         setInitialized(true);
-      } else if (!initialized && !userFromState) {
-        // No user in state - fetch from API (page refresh or direct navigation)
-        setInitialized(true);
-        try {
-          const response = await axios.get(`${API}/auth/me`, {
-            withCredentials: true
-          });
-          setUser(response.data);
-          
-          // Load organizations
-          const orgsResponse = await axios.get(`${API}/organizations`, {
-            withCredentials: true
-          });
-          setOrganizations(orgsResponse.data);
-          if (orgsResponse.data.length > 0) {
-            setCurrentOrg(orgsResponse.data[0]);
-          }
-          
-          setLoading(false);
-        } catch (error) {
-          console.error('Failed to initialize from API:', error);
-          setLoading(false);
+        return;
+      }
+
+      // Case 2: Already initialized, skip
+      if (initialized) return;
+      setInitialized(true);
+
+      // Case 3: Page refresh or direct navigation - fetch from API
+      try {
+        console.log('Fetching user from API...');
+        const response = await axios.get(`${API}/auth/me`, {
+          withCredentials: true
+        });
+        setUser(response.data);
+        
+        // Fetch organizations
+        const orgsResponse = await axios.get(`${API}/organizations`, {
+          withCredentials: true
+        });
+        setOrganizations(orgsResponse.data);
+        if (orgsResponse.data.length > 0) {
+          setCurrentOrg(orgsResponse.data[0]);
         }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize from API:', error);
+        setLoading(false);
       }
     };
     
     initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state?.user]);
+  }, [location.state, initialized]);
 
-  // Load organization-specific data
+  // Load organization-specific data when currentOrg changes
   useEffect(() => {
     const loadOrgData = async () => {
       if (currentOrg) {
