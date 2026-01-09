@@ -92,6 +92,10 @@ const RequestBuilder = ({ request }) => {
       );
 
       setResponse(executeResponse.data);
+      
+      // Add to history
+      addToHistory(request, executeResponse.data);
+      
       setLoading(false);
       
       toast({
@@ -99,6 +103,9 @@ const RequestBuilder = ({ request }) => {
         description: `${request.method} request completed in ${executeResponse.data.time}ms`,
       });
     } catch (error) {
+      // Add failed request to history too
+      addToHistory(request, { status: 0, statusText: 'Error', time: 0 });
+      
       setLoading(false);
       toast({
         title: 'Request failed',
