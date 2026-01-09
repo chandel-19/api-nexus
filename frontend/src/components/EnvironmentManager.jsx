@@ -341,27 +341,8 @@ const EnvironmentManager = ({ onClose }) => {
 
           <div className="flex gap-2">
             <Button
-              onClick={async () => {
-                try {
-                  await axios.put(
-                    `${BACKEND_URL}/api/environments/${editingEnv.env_id}`,
-                    editingEnv,
-                    { withCredentials: true }
-                  );
-                  toast({
-                    title: 'Environment updated',
-                    description: 'Changes saved successfully',
-                  });
-                  setEditingEnv(null);
-                  window.location.reload();
-                } catch (error) {
-                  toast({
-                    title: 'Update failed',
-                    description: error.message,
-                    variant: 'destructive'
-                  });
-                }
-              }}
+              onClick={handleUpdateEnvironment}
+              disabled={loading}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               <Check className="w-4 h-4 mr-1" />
@@ -370,6 +351,7 @@ const EnvironmentManager = ({ onClose }) => {
             <Button
               variant="ghost"
               onClick={() => setEditingEnv(null)}
+              disabled={loading}
               className="flex-1 text-zinc-400 hover:text-zinc-100"
             >
               <X className="w-4 h-4 mr-1" />
@@ -378,6 +360,29 @@ const EnvironmentManager = ({ onClose }) => {
           </div>
         </div>
       )}
+
+      {/* Delete Environment Dialog */}
+      <AlertDialog open={!!deletingEnv} onOpenChange={() => setDeletingEnv(null)}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-100">Delete Environment?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to delete &quot;{deletingEnv?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border-zinc-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteEnvironment}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
