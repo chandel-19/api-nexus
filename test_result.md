@@ -190,7 +190,17 @@ backend:
           comment: "✅ History endpoint working. GET /organizations/{org_id}/history returns empty list (expected since no request executions were logged to history during testing). Authorization checks working properly."
 
 frontend:
-  # No frontend testing performed as per instructions
+  - task: "View Members Functionality"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/OrganizationManager.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "UNABLE TO TEST: Google OAuth authentication cannot be completed in automated browser environment. Frontend code analysis confirms OrganizationManager.jsx has proper implementation: 1) 'View Members' button exists for team organizations, 2) Members list displays with names, emails, roles, and profile pictures, 3) Proper role badges (Admin/Edit/View) with icons, 4) Member management functionality for admins. App loads correctly showing 'API Nexus' login page with Google OAuth button, but OAuth flow doesn't complete in headless browser due to security restrictions. Backend API requires authentication (401 for /api/organizations). RECOMMENDATION: Manual testing required or authenticated session needed for automated testing."
 
 metadata:
   created_by: "testing_agent"
