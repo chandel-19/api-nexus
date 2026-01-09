@@ -47,7 +47,7 @@ export const AppProvider = ({ children }) => {
   const [currentOrgRole, setCurrentOrgRole] = useState(null);
   const [collections, setCollections] = useState([]);
   const [requests, setRequests] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(initialHistory);
   const [environments, setEnvironments] = useState([]);
   const [currentEnv, setCurrentEnv] = useState(null);
   const [openTabs, setOpenTabs] = useState([]);
