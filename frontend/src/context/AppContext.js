@@ -49,47 +49,58 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Initialize: Check for user from location state OR fetch from API
+  // Initialize: Always fetch fresh data from API to ensure consistency
   useEffect(() => {
     const initialize = async () => {
       if (initialized) return;
       setInitialized(true);
 
-      // Check if user data was passed from auth callback
-      const userFromState = location.state?.user;
-      
-      if (userFromState) {
-        // User came from auth callback - set user and load orgs
-        setUser(userFromState);
-        await loadOrganizations();
-        setLoading(false);
-      } else {
-        // No user in state - try to fetch from session
-        try {
-          const response = await axios.get(`${API}/auth/me`, {
-            withCredentials: true
-          });
-          setUser(response.data);
-          await loadOrganizations();
-          setLoading(false);
-        } catch (error) {
-          console.error('Failed to load user:', error);
-          setLoading(false);
+      try {
+        // Always fetch user from API to ensure we have valid session
+        const response = await axios.get(`${API}/auth/me`, {
+          withCredentials: true
+        });
+        const userData = response.data;
+        setUser(userData);
+        
+        // Immediately load organizations after getting user
+        const orgsResponse = await axios.get(`${API}/organizations`, {
+          withCredentials: true
+        });
+        setOrganizations(orgsResponse.data);
+        
+        // Set first org as current if available
+        if (orgsResponse.data.length > 0) {
+          setCurrentOrg(orgsResponse.data[0]);
         }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        // If user was passed from auth callback, use that as fallback
+        const userFromState = location.state?.user;
+        if (userFromState) {
+          setUser(userFromState);
+          // Try loading orgs with the session cookie
+          try {
+            const orgsResponse = await axios.get(`${API}/organizations`, {
+              withCredentials: true
+            });
+            setOrganizations(orgsResponse.data);
+            if (orgsResponse.data.length > 0) {
+              setCurrentOrg(orgsResponse.data[0]);
+            }
+          } catch (orgError) {
+            console.error('Failed to load orgs:', orgError);
+          }
+        }
+        setLoading(false);
       }
     };
     
     initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
-
-  // Reload organizations when user changes (e.g., after re-login)
-  useEffect(() => {
-    if (user && initialized && organizations.length === 0) {
-      loadOrganizations();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, []);
 
   // Load organization-specific data
   useEffect(() => {
