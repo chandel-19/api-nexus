@@ -30,8 +30,16 @@ export const AppProvider = ({ children }) => {
     } catch { return []; }
   };
 
+  const getInitialHistory = () => {
+    try {
+      const stored = localStorage.getItem('request_history');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  };
+
   const initialUser = getInitialUser();
   const initialOrgs = getInitialOrgs();
+  const initialHistory = getInitialHistory();
 
   const [user, setUser] = useState(initialUser);
   const [organizations, setOrganizations] = useState(initialOrgs);
