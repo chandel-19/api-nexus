@@ -34,7 +34,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const RequestBuilder = ({ request }) => {
-  const { updateRequest, saveRequest, collections, refreshCollections, closeTab, activeTab } = useApp();
+  const { updateRequest, saveRequest, collections, refreshCollections, closeTab, activeTab, addToHistory } = useApp();
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
