@@ -209,3 +209,5 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "Comprehensive backend API testing completed. 21/22 tests passed (95.5% success rate). All core functionality working: auth, organizations, collections, requests, request execution proxy, and history. One bug found in environment creation endpoint (server.py:584) - route signature mismatch. Request execution proxy is particularly robust, handling GET/POST requests, JSON bodies, custom headers, and external API calls to httpbin.org successfully."
+    - agent: "main"
+      message: "Verified database has member_roles field populated correctly for all organizations. Test Org 1 has 2 members with roles (admin, edit). Need E2E testing to verify the 'View Members' button now displays users correctly after Google OAuth login. Focus on: 1) Login via Google OAuth, 2) Navigate to Organization Management, 3) Click 'View Members' on a team org, 4) Verify members list displays with names, emails, and roles."
