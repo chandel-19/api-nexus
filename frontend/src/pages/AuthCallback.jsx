@@ -30,7 +30,7 @@ const AuthCallback = () => {
 
         console.log('Exchanging session_id for user data...');
 
-        // Exchange session_id for user data
+        // Exchange session_id for user data - this sets the cookie
         const response = await axios.post(
           `${BACKEND_URL}/api/auth/session`,
           { session_id: sessionId },
@@ -40,8 +40,42 @@ const AuthCallback = () => {
         const userData = response.data;
         console.log('Auth successful! User:', userData);
 
-        // Navigate to dashboard with user data
-        navigate('/dashboard', { state: { user: userData }, replace: true });
+        // Wait for cookie to be fully processed by browser
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Verify cookie is working by fetching organizations
+        // This ensures the cookie is properly set before navigation
+        let organizations = [];
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (retryCount < maxRetries) {
+          try {
+            const orgsResponse = await axios.get(
+              `${BACKEND_URL}/api/organizations`,
+              { withCredentials: true }
+            );
+            organizations = orgsResponse.data;
+            console.log('Organizations fetched successfully:', organizations.length);
+            break;
+          } catch (error) {
+            retryCount++;
+            console.log(`Cookie not ready yet, retry ${retryCount}/${maxRetries}`);
+            if (retryCount < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+        }
+
+        // Navigate to dashboard with user data AND organizations
+        navigate('/dashboard', { 
+          state: { 
+            user: userData, 
+            organizations: organizations,
+            authComplete: true 
+          }, 
+          replace: true 
+        });
       } catch (error) {
         console.error('Auth callback error:', error);
         console.error('Error details:', error.response?.data);
