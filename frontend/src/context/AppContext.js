@@ -132,6 +132,20 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const refreshEnvironments = async () => {
+    if (currentOrg) {
+      try {
+        const envsRes = await axios.get(
+          `${API}/organizations/${currentOrg.org_id}/environments`,
+          { withCredentials: true }
+        );
+        setEnvironments(envsRes.data);
+      } catch (error) {
+        console.error('Failed to refresh environments:', error);
+      }
+    }
+  };
+
   // Add request to local history (max 100 items)
   const addToHistory = (request, response) => {
     const historyItem = {
