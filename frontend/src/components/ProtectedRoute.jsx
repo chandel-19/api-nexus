@@ -1,45 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 const ProtectedRoute = ({ children }) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    location.state?.user ? true : null
-  );
-  const [user, setUser] = useState(location.state?.user || null);
+  const { user, loading } = useApp();
 
-  useEffect(() => {
-    // If user data passed from AuthCallback, skip auth check
-    if (location.state?.user) {
-      setIsAuthenticated(true);
-      return;
-    }
-
-    const checkAuth = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-          withCredentials: true
-        });
-        
-        if (response.status === 200) {
-          setUser(response.data);
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-      }
-    };
-
-    checkAuth();
-  }, [location.state]);
-
-  // Loading state
-  if (isAuthenticated === null) {
+  // Show loading while AppContext is initializing
+  if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
@@ -50,8 +17,8 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // Not authenticated
-  if (isAuthenticated === false) {
+  // Not authenticated - redirect to login
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
