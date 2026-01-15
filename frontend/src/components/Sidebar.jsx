@@ -6,7 +6,6 @@ import {
   ChevronDown,
   FileText,
   Clock,
-  Settings,
   Database,
   Building2,
   LogOut,
@@ -409,13 +408,6 @@ const Sidebar = () => {
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
-          <Button
-            variant="ghost"
             onClick={handleLogout}
             className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-zinc-800"
           >
@@ -442,11 +434,13 @@ const Sidebar = () => {
 
       {/* Environment Manager Dialog */}
       <Dialog open={showEnvironments} onOpenChange={setShowEnvironments}>
-        <DialogContent className="max-w-3xl bg-zinc-900 border-zinc-800 max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl w-[90vw] bg-zinc-950 border-zinc-800 p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-zinc-800">
             <DialogTitle className="text-zinc-100">Environment Manager</DialogTitle>
           </DialogHeader>
-          <EnvironmentManager onClose={() => setShowEnvironments(false)} />
+          <div className="overflow-hidden">
+            <EnvironmentManager onClose={() => setShowEnvironments(false)} />
+          </div>
         </DialogContent>
       </Dialog>
 

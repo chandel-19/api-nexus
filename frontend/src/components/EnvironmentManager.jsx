@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -15,15 +15,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const EnvironmentManager = ({ onClose }) => {
   const { environments, currentEnv, setCurrentEnv, currentOrg, refreshEnvironments } = useApp();
+  const [selectedEnv, setSelectedEnv] = useState(currentEnv || null);
   const [editingEnv, setEditingEnv] = useState(null);
   const [deletingEnv, setDeletingEnv] = useState(null);
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('key'); // 'key', 'value', 'enabled'
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
   const [newEnv, setNewEnv] = useState({
     name: '',
     variables: [{ key: '', value: '', enabled: true }]
@@ -45,7 +55,16 @@ const EnvironmentManager = ({ onClose }) => {
       
       setCreating(false);
       setNewEnv({ name: '', variables: [{ key: '', value: '', enabled: true }] });
-      if (refreshEnvironments) await refreshEnvironments();
+      if (refreshEnvironments) {
+        await refreshEnvironments();
+        // Select the newly created environment
+        const updatedEnvs = await axios.get(
+          `${BACKEND_URL}/api/organizations/${currentOrg.org_id}/environments`,
+          { withCredentials: true }
+        );
+        const newEnvData = updatedEnvs.data.find(e => e.name === newEnv.name);
+        if (newEnvData) setSelectedEnv(newEnvData);
+      }
     } catch (error) {
       toast({
         title: 'Failed to create environment',
@@ -70,7 +89,16 @@ const EnvironmentManager = ({ onClose }) => {
         description: 'Changes saved successfully',
       });
       setEditingEnv(null);
-      if (refreshEnvironments) await refreshEnvironments();
+      if (refreshEnvironments) {
+        await refreshEnvironments();
+        // Update selected environment
+        const updatedEnvs = await axios.get(
+          `${BACKEND_URL}/api/organizations/${currentOrg.org_id}/environments`,
+          { withCredentials: true }
+        );
+        const updatedEnv = updatedEnvs.data.find(e => e.env_id === editingEnv.env_id);
+        if (updatedEnv) setSelectedEnv(updatedEnv);
+      }
     } catch (error) {
       toast({
         title: 'Update failed',
@@ -96,6 +124,9 @@ const EnvironmentManager = ({ onClose }) => {
       setDeletingEnv(null);
       if (currentEnv?.env_id === deletingEnv.env_id) {
         setCurrentEnv(null);
+      }
+      if (selectedEnv?.env_id === deletingEnv.env_id) {
+        setSelectedEnv(null);
       }
       if (refreshEnvironments) await refreshEnvironments();
     } catch (error) {
@@ -149,217 +180,447 @@ const EnvironmentManager = ({ onClose }) => {
     }
   };
 
+  const toggleVariableEnabled = (index, isNew = false) => {
+    if (isNew) {
+      const updated = [...newEnv.variables];
+      updated[index].enabled = !updated[index].enabled;
+      setNewEnv({ ...newEnv, variables: updated });
+    } else if (editingEnv) {
+      const updated = [...editingEnv.variables];
+      updated[index].enabled = !updated[index].enabled;
+      setEditingEnv({ ...editingEnv, variables: updated });
+    }
+  };
+
+  const getSortedVariables = (variables) => {
+    if (!variables) return [];
+    const sorted = [...variables];
+    sorted.sort((a, b) => {
+      let aVal, bVal;
+      if (sortBy === 'key') {
+        aVal = (a.key || '').toLowerCase();
+        bVal = (b.key || '').toLowerCase();
+      } else if (sortBy === 'value') {
+        aVal = (a.value || '').toLowerCase();
+        bVal = (b.value || '').toLowerCase();
+      } else if (sortBy === 'enabled') {
+        aVal = a.enabled ? 1 : 0;
+        bVal = b.enabled ? 1 : 0;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+    return sorted;
+  };
+
+  const handleSelectEnvironment = (env) => {
+    setSelectedEnv(env);
+    setEditingEnv(null);
+    setCreating(false);
+  };
+
+  const handleSetAsActive = (env) => {
+    setCurrentEnv(env);
+    toast({
+      title: 'Environment activated',
+      description: `${env.name} is now active`,
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Environment List */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-zinc-400">Environments</h3>
-          <Button
-            size="sm"
-            onClick={() => setCreating(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            New Environment
-          </Button>
+    <div className="flex h-[70vh] bg-zinc-950">
+      {/* Left Sidebar - Environment List */}
+      <div className="w-64 border-r border-zinc-800 flex flex-col">
+        <div className="p-4 border-b border-zinc-800">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-zinc-100">Environments</h3>
+            <Button
+              size="sm"
+              onClick={() => {
+                setCreating(true);
+                setSelectedEnv(null);
+                setEditingEnv(null);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 h-7 px-2"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
 
-        {environments.map(env => (
-          <div
-            key={env.env_id}
-            className={`p-4 rounded-lg border transition-colors cursor-pointer ${
-              currentEnv?.env_id === env.env_id
-                ? 'bg-blue-500/10 border-blue-500/50'
-                : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
-            }`}
-            onClick={() => setCurrentEnv(env)}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-medium text-zinc-100">{env.name}</h4>
-                <p className="text-xs text-zinc-500 mt-1">
-                  {env.variables.length} variable(s)
-                </p>
+        <div className="flex-1 overflow-y-auto">
+          {environments.map(env => (
+            <div
+              key={env.env_id}
+              className={`px-4 py-3 border-b border-zinc-800 cursor-pointer transition-colors ${
+                selectedEnv?.env_id === env.env_id
+                  ? 'bg-blue-500/10 border-l-2 border-l-blue-500'
+                  : 'hover:bg-zinc-800/50'
+              }`}
+              onClick={() => handleSelectEnvironment(env)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-zinc-100 truncate">{env.name}</h4>
+                    {currentEnv?.env_id === env.env_id && (
+                      <span className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded flex-shrink-0">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {env.variables?.length || 0} variable{env.variables?.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
               </div>
+            </div>
+          ))}
+
+          {environments.length === 0 && !creating && (
+            <div className="text-center py-8 text-zinc-500 text-sm px-4">
+              No environments yet. Create one to get started.
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Right Side - Variables */}
+      <div className="flex-1 flex flex-col">
+        {creating ? (
+          <>
+            {/* Create New Environment */}
+            <div className="flex-1 flex flex-col">
+              <div className="p-4 border-b border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-zinc-100">New Environment</h3>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setCreating(false);
+                      setNewEnv({ name: '', variables: [{ key: '', value: '', enabled: true }] });
+                    }}
+                    className="h-7 px-2"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-2 block">Environment Name</label>
+                    <Input
+                      placeholder="Environment name (e.g., Production)"
+                      value={newEnv.name}
+                      onChange={(e) => setNewEnv({ ...newEnv, name: e.target.value })}
+                      className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-zinc-400">Variables</label>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => addVariable(true)}
+                        className="text-zinc-400 hover:text-zinc-100 h-7"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Add Variable
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {newEnv.variables.map((variable, index) => (
+                        <div key={index} className="flex items-center gap-2 p-3 bg-zinc-900 rounded border border-zinc-800">
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <Input
+                              placeholder="Key"
+                              value={variable.key}
+                              onChange={(e) => updateVariable(index, 'key', e.target.value, true)}
+                              className="bg-zinc-950 border-zinc-700 text-zinc-100"
+                            />
+                            <Input
+                              placeholder="Value"
+                              value={variable.value}
+                              onChange={(e) => updateVariable(index, 'value', e.target.value, true)}
+                              className="bg-zinc-950 border-zinc-700 text-zinc-100"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleVariableEnabled(index, true)}
+                            className={`h-7 px-2 ${
+                              variable.enabled !== false
+                                ? 'text-green-400 hover:text-green-300'
+                                : 'text-zinc-500 hover:text-zinc-400'
+                            }`}
+                            title={variable.enabled !== false ? 'Disable' : 'Enable'}
+                          >
+                            {variable.enabled !== false ? '✓' : '○'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeVariable(index, true)}
+                            className="text-red-400 hover:text-red-300 h-7 px-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      onClick={handleCreateEnvironment}
+                      disabled={!newEnv.name || loading}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Create Environment
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : editingEnv ? (
+          <>
+            {/* Edit Mode */}
+            <div className="flex-1 flex flex-col">
+              <div className="p-4 border-b border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-zinc-100">Edit: {editingEnv.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleUpdateEnvironment}
+                      disabled={loading}
+                      className="bg-blue-600 hover:bg-blue-700 h-7"
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingEnv(null);
+                        setSelectedEnv(environments.find(e => e.env_id === editingEnv.env_id) || null);
+                      }}
+                      className="h-7 px-2"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-2 block">Environment Name</label>
+                    <Input
+                      value={editingEnv.name}
+                      onChange={(e) => setEditingEnv({ ...editingEnv, name: e.target.value })}
+                      className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-zinc-400">Variables</label>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => addVariable()}
+                        className="text-zinc-400 hover:text-zinc-100 h-7"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Add Variable
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {editingEnv.variables.map((variable, index) => (
+                        <div key={index} className="flex items-center gap-2 p-3 bg-zinc-900 rounded border border-zinc-800">
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <Input
+                              placeholder="Key"
+                              value={variable.key}
+                              onChange={(e) => updateVariable(index, 'key', e.target.value)}
+                              className="bg-zinc-950 border-zinc-700 text-zinc-100"
+                            />
+                            <Input
+                              placeholder="Value"
+                              value={variable.value}
+                              onChange={(e) => updateVariable(index, 'value', e.target.value)}
+                              className="bg-zinc-950 border-zinc-700 text-zinc-100"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleVariableEnabled(index)}
+                            className={`h-7 px-2 ${
+                              variable.enabled !== false
+                                ? 'text-green-400 hover:text-green-300'
+                                : 'text-zinc-500 hover:text-zinc-400'
+                            }`}
+                            title={variable.enabled !== false ? 'Disable' : 'Enable'}
+                          >
+                            {variable.enabled !== false ? '✓' : '○'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeVariable(index)}
+                            className="text-red-400 hover:text-red-300 h-7 px-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : selectedEnv ? (
+          <>
+            {/* Header */}
+            <div className="p-4 border-b border-zinc-800">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-100">{selectedEnv.name}</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {selectedEnv.variables?.length || 0} variable{selectedEnv.variables?.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {currentEnv?.env_id !== selectedEnv.env_id && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleSetAsActive(selectedEnv)}
+                      className="bg-blue-600 hover:bg-blue-700 h-7"
+                    >
+                      Set as Active
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingEnv({ ...selectedEnv });
+                      setSelectedEnv(null);
+                    }}
+                    className="text-zinc-400 hover:text-zinc-100 h-7"
+                    title="Edit environment"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDeletingEnv(selectedEnv)}
+                    className="text-red-400 hover:text-red-300 h-7"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Sort Controls */}
               <div className="flex items-center gap-2">
-                {currentEnv?.env_id === env.env_id && (
-                  <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">
-                    Active
-                  </span>
-                )}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-32 h-7 bg-zinc-900 border-zinc-700 text-zinc-100 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                    <SelectItem value="key">Key</SelectItem>
+                    <SelectItem value="value">Value</SelectItem>
+                    <SelectItem value="enabled">Status</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingEnv({ ...env });
-                  }}
-                  className="text-zinc-400 hover:text-zinc-100"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="h-7 px-2 text-zinc-400 hover:text-zinc-100"
+                  title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
                 >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeletingEnv(env);
-                  }}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <Trash2 className="w-4 h-4" />
+                  {sortOrder === 'asc' ? (
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  )}
                 </Button>
               </div>
             </div>
-          </div>
-        ))}
 
-        {environments.length === 0 && !creating && (
-          <div className="text-center py-8 text-zinc-500">
-            No environments yet. Create one to get started.
+            {/* Variables List */}
+            <div className="flex-1 overflow-y-auto">
+              {selectedEnv.variables && selectedEnv.variables.length > 0 ? (
+                <div className="p-4">
+                  <div className="space-y-2">
+                    {getSortedVariables(selectedEnv.variables).map((variable, index) => {
+                      const originalIndex = selectedEnv.variables.findIndex(
+                        v => v.key === variable.key && v.value === variable.value
+                      );
+                      return (
+                        <div
+                          key={originalIndex}
+                          className="flex items-center gap-2 p-3 bg-zinc-900 rounded border border-zinc-800"
+                        >
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <div>
+                              <div className="text-xs text-zinc-500 mb-1">Key</div>
+                              <div className="text-sm text-zinc-100 font-mono">{variable.key || '(empty)'}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-zinc-500 mb-1">Value</div>
+                              <div className="text-sm text-zinc-100 font-mono truncate">{variable.value || '(empty)'}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`px-2 py-1 rounded text-xs ${
+                              variable.enabled !== false
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-zinc-800 text-zinc-500'
+                            }`}>
+                              {variable.enabled !== false ? 'Enabled' : 'Disabled'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
+                  No variables in this environment
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-zinc-500 text-sm">
+            Select an environment to view its variables
           </div>
         )}
       </div>
-
-      {/* Create New Environment */}
-      {creating && (
-        <div className="p-4 bg-zinc-800 rounded-lg border border-zinc-700">
-          <h3 className="text-sm font-medium text-zinc-100 mb-4">New Environment</h3>
-          
-          <Input
-            placeholder="Environment name (e.g., Production)"
-            value={newEnv.name}
-            onChange={(e) => setNewEnv({ ...newEnv, name: e.target.value })}
-            className="mb-4 bg-zinc-900 border-zinc-700 text-zinc-100"
-          />
-
-          <div className="space-y-2 mb-4">
-            <label className="text-xs text-zinc-400">Variables</label>
-            {newEnv.variables.map((variable, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input
-                  placeholder="Key"
-                  value={variable.key}
-                  onChange={(e) => updateVariable(index, 'key', e.target.value, true)}
-                  className="flex-1 bg-zinc-900 border-zinc-700 text-zinc-100"
-                />
-                <Input
-                  placeholder="Value"
-                  value={variable.value}
-                  onChange={(e) => updateVariable(index, 'value', e.target.value, true)}
-                  className="flex-1 bg-zinc-900 border-zinc-700 text-zinc-100"
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeVariable(index, true)}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => addVariable(true)}
-              className="w-full text-zinc-400 hover:text-zinc-100 border border-dashed border-zinc-700"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Variable
-            </Button>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleCreateEnvironment}
-              disabled={!newEnv.name}
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Create
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setCreating(false);
-                setNewEnv({ name: '', variables: [{ key: '', value: '', enabled: true }] });
-              }}
-              className="flex-1 text-zinc-400 hover:text-zinc-100"
-            >
-              <X className="w-4 h-4 mr-1" />
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Environment */}
-      {editingEnv && (
-        <div className="p-4 bg-zinc-800 rounded-lg border border-zinc-700">
-          <h3 className="text-sm font-medium text-zinc-100 mb-4">
-            Edit: {editingEnv.name}
-          </h3>
-          
-          <div className="space-y-2 mb-4">
-            <label className="text-xs text-zinc-400">Variables</label>
-            {editingEnv.variables.map((variable, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input
-                  placeholder="Key"
-                  value={variable.key}
-                  onChange={(e) => updateVariable(index, 'key', e.target.value)}
-                  className="flex-1 bg-zinc-900 border-zinc-700 text-zinc-100"
-                />
-                <Input
-                  placeholder="Value"
-                  value={variable.value}
-                  onChange={(e) => updateVariable(index, 'value', e.target.value)}
-                  className="flex-1 bg-zinc-900 border-zinc-700 text-zinc-100"
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeVariable(index)}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => addVariable()}
-              className="w-full text-zinc-400 hover:text-zinc-100 border border-dashed border-zinc-700"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Variable
-            </Button>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleUpdateEnvironment}
-              disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Save
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setEditingEnv(null)}
-              disabled={loading}
-              className="flex-1 text-zinc-400 hover:text-zinc-100"
-            >
-              <X className="w-4 h-4 mr-1" />
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Delete Environment Dialog */}
       <AlertDialog open={!!deletingEnv} onOpenChange={() => setDeletingEnv(null)}>
