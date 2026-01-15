@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal, Globe } from 'lucide-react';
+import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { parseCurl } from '../utils/curlParser';
@@ -437,16 +437,26 @@ const RequestBuilder = ({ request }) => {
                 }
               }}
             >
-              <SelectTrigger className={`w-48 bg-zinc-900 border-zinc-800 text-zinc-100 ${currentEnv ? 'border-blue-500/50' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <Globe className={`w-4 h-4 ${currentEnv ? 'text-blue-400' : 'text-zinc-500'}`} />
-                  <SelectValue placeholder={environments.length === 0 ? "No Environments" : "No Environment"} />
-                </div>
+              <SelectTrigger className={`min-w-[180px] max-w-[240px] bg-zinc-900 border-zinc-800 text-zinc-100 px-3 py-2 ${currentEnv ? 'border-blue-500/50' : ''}`}>
+                {currentEnv ? (
+                  <div className="flex items-center gap-1.5 min-w-0 w-full">
+                    <span className="text-sm font-medium text-zinc-100 truncate flex-shrink">
+                      {currentEnv.name}
+                    </span>
+                    <span className="text-xs text-zinc-500 whitespace-nowrap flex-shrink-0">
+                      ({currentEnv.variables?.length || 0} vars)
+                    </span>
+                    <span className="text-xs text-blue-400 whitespace-nowrap flex-shrink-0">• Active</span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-zinc-500">
+                    {environments.length === 0 ? "No Environments" : "No Environment"}
+                  </span>
+                )}
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-800">
                 <SelectItem value="none" className="text-zinc-400">
                   <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
                     No Environment
                   </div>
                 </SelectItem>
@@ -458,13 +468,12 @@ const RequestBuilder = ({ request }) => {
                   environments.map(env => (
                     <SelectItem key={env.env_id} value={env.env_id}>
                       <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4" />
-                        {env.name}
-                        <span className="text-xs text-zinc-500 ml-1">
+                        <span className="text-sm">{env.name}</span>
+                        <span className="text-xs text-zinc-500">
                           ({env.variables?.length || 0} vars)
                         </span>
                         {currentEnv?.env_id === env.env_id && (
-                          <span className="text-xs text-blue-400 ml-1">• Active</span>
+                          <span className="text-xs text-blue-400">• Active</span>
                         )}
                       </div>
                     </SelectItem>
