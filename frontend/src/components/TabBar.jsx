@@ -1,7 +1,13 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import RequestBuilder from './RequestBuilder';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 const TabBar = () => {
   const { openTabs, activeTab, setActiveTab, closeTab, createNewRequest } = useApp();
@@ -20,35 +26,50 @@ const TabBar = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Tab Bar */}
-      {openTabs.length > 0 && (
-        <div className="flex items-center gap-1 bg-zinc-900 border-b border-zinc-800 overflow-x-auto">
-          {openTabs.map(tab => (
-            <div
-              key={tab.request_id}
-              onClick={() => setActiveTab(tab.request_id)}
-              className={`group flex items-center gap-2 px-4 py-2.5 border-r border-zinc-800 cursor-pointer min-w-max transition-colors ${
-                activeTab === tab.request_id
-                  ? 'bg-zinc-800 text-zinc-100'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
-              }`}
+      <div className="flex items-center gap-1 bg-zinc-900 border-b border-zinc-800 overflow-x-auto">
+        {openTabs.map(tab => (
+          <div
+            key={tab.request_id}
+            onClick={() => setActiveTab(tab.request_id)}
+            className={`group flex items-center gap-2 px-4 py-2.5 border-r border-zinc-800 cursor-pointer min-w-max transition-colors ${
+              activeTab === tab.request_id
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${getMethodColor(tab.method)}`}
+            />
+            <span className="text-sm font-medium">{tab.name}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closeTab(tab.request_id);
+              }}
+              className="opacity-0 group-hover:opacity-100 hover:bg-zinc-700 rounded p-0.5 transition-opacity"
             >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${getMethodColor(tab.method)}`}
-              />
-              <span className="text-sm font-medium">{tab.name}</span>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(tab.request_id);
-                }}
-                className="opacity-0 group-hover:opacity-100 hover:bg-zinc-700 rounded p-0.5 transition-opacity"
+                onClick={createNewRequest}
+                className="flex items-center justify-center w-8 h-8 mx-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded transition-colors"
+                aria-label="Create new request"
               >
-                <X className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
               </button>
-            </div>
-          ))}
-        </div>
-      )}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="bg-zinc-800 text-zinc-100 border-zinc-700">
+              <p>Create new request</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
