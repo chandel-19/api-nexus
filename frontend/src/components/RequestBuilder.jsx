@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal } from 'lucide-react';
+import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal, Globe } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { parseCurl } from '../utils/curlParser';
+import { substituteRequestVariables } from '../utils/envSubstitution';
 import {
   Select,
   SelectContent,
@@ -35,7 +36,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const RequestBuilder = ({ request }) => {
-  const { updateRequest, saveRequest, collections, refreshCollections, closeTab, activeTab, addToHistory } = useApp();
+  const { updateRequest, saveRequest, collections, refreshCollections, closeTab, activeTab, addToHistory, environments, currentEnv, setCurrentEnv } = useApp();
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -80,16 +81,27 @@ const RequestBuilder = ({ request }) => {
   const handleSendRequest = async () => {
     setLoading(true);
     try {
+      // Substitute environment variables if an environment is selected
+      let requestToExecute = { ...request };
+      if (currentEnv && currentEnv.variables && currentEnv.variables.length > 0) {
+        requestToExecute = substituteRequestVariables(requestToExecute, currentEnv);
+        // Debug: log the substitution (remove in production)
+        console.log('Original URL:', request.url);
+        console.log('Substituted URL:', requestToExecute.url);
+        console.log('Environment:', currentEnv.name);
+        console.log('Variables:', currentEnv.variables);
+      }
+
       // Execute request via backend proxy
       const executeResponse = await axios.post(
         `${API}/requests/execute`,
         {
-          method: request.method,
-          url: request.url,
-          headers: request.headers,
-          params: request.params,
-          body: request.body,
-          auth: request.auth
+          method: requestToExecute.method,
+          url: requestToExecute.url,
+          headers: requestToExecute.headers,
+          params: requestToExecute.params,
+          body: requestToExecute.body,
+          auth: requestToExecute.auth
         },
         { withCredentials: true }
       );
@@ -332,19 +344,26 @@ const RequestBuilder = ({ request }) => {
 
       // Execute immediately if requested
       if (executeImmediately && parsed.url) {
+        // Substitute environment variables if an environment is selected
+        let requestToExecute = {
+          method: parsed.method,
+          url: parsed.url,
+          headers: parsed.headers,
+          params: parsed.params,
+          body: parsed.body,
+          auth: parsed.auth
+        };
+        
+        if (currentEnv && currentEnv.variables && currentEnv.variables.length > 0) {
+          requestToExecute = substituteRequestVariables(requestToExecute, currentEnv);
+        }
+
         // Execute with the parsed data directly
         setLoading(true);
         try {
           const executeResponse = await axios.post(
             `${API}/requests/execute`,
-            {
-              method: parsed.method,
-              url: parsed.url,
-              headers: parsed.headers,
-              params: parsed.params,
-              body: parsed.body,
-              auth: parsed.auth
-            },
+            requestToExecute,
             { withCredentials: true }
           );
 
@@ -403,9 +422,56 @@ const RequestBuilder = ({ request }) => {
               type="text"
               value={request.url}
               onChange={(e) => updateField('url', e.target.value)}
-              placeholder="Enter request URL"
+              placeholder="Enter request URL (use {{variable}} for env vars)"
               className="flex-1 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             />
+
+            <Select
+              value={currentEnv?.env_id || 'none'}
+              onValueChange={(value) => {
+                if (value === 'none') {
+                  setCurrentEnv(null);
+                } else {
+                  const env = environments.find(e => e.env_id === value);
+                  if (env) setCurrentEnv(env);
+                }
+              }}
+            >
+              <SelectTrigger className={`w-48 bg-zinc-900 border-zinc-800 text-zinc-100 ${currentEnv ? 'border-blue-500/50' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <Globe className={`w-4 h-4 ${currentEnv ? 'text-blue-400' : 'text-zinc-500'}`} />
+                  <SelectValue placeholder={environments.length === 0 ? "No Environments" : "No Environment"} />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectItem value="none" className="text-zinc-400">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    No Environment
+                  </div>
+                </SelectItem>
+                {environments.length === 0 ? (
+                  <div className="px-2 py-4 text-xs text-zinc-500 text-center">
+                    Create an environment first
+                  </div>
+                ) : (
+                  environments.map(env => (
+                    <SelectItem key={env.env_id} value={env.env_id}>
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        {env.name}
+                        <span className="text-xs text-zinc-500 ml-1">
+                          ({env.variables?.length || 0} vars)
+                        </span>
+                        {currentEnv?.env_id === env.env_id && (
+                          <span className="text-xs text-blue-400 ml-1">• Active</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
 
             <Button
               onClick={handleSendRequest}
