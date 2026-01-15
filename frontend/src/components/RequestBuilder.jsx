@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Trash2, Plus, X, Copy, Folder } from 'lucide-react';
+import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
+import { parseCurl } from '../utils/curlParser';
 import {
   Select,
   SelectContent,
@@ -40,6 +41,8 @@ const RequestBuilder = ({ request }) => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCurlDialog, setShowCurlDialog] = useState(false);
+  const [curlInput, setCurlInput] = useState('');
   const [selectedCollection, setSelectedCollection] = useState(request?.collection_id || null);
   const [saveAsName, setSaveAsName] = useState(request?.name || '');
 
@@ -280,6 +283,98 @@ const RequestBuilder = ({ request }) => {
     });
   };
 
+  const handleImportCurl = () => {
+    setCurlInput('');
+    setShowCurlDialog(true);
+  };
+
+  const handleParseCurl = async (executeImmediately = false) => {
+    try {
+      if (!curlInput.trim()) {
+        toast({
+          title: 'Empty cURL',
+          description: 'Please paste a cURL command',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const parsed = parseCurl(curlInput);
+      
+      // Prepare the updated request data
+      const updatedRequest = {
+        ...request,
+        method: parsed.method,
+        url: parsed.url,
+        headers: parsed.headers.length > 0 ? parsed.headers : request.headers,
+        params: parsed.params.length > 0 ? parsed.params : request.params,
+        body: parsed.body.type !== 'none' ? parsed.body : request.body,
+        auth: parsed.auth.type !== 'none' ? parsed.auth : request.auth
+      };
+      
+      // Update request with parsed data
+      updateRequest(request.request_id, {
+        method: parsed.method,
+        url: parsed.url,
+        headers: parsed.headers.length > 0 ? parsed.headers : request.headers,
+        params: parsed.params.length > 0 ? parsed.params : request.params,
+        body: parsed.body.type !== 'none' ? parsed.body : request.body,
+        auth: parsed.auth.type !== 'none' ? parsed.auth : request.auth
+      });
+
+      setShowCurlDialog(false);
+      setCurlInput('');
+      
+      toast({
+        title: 'cURL imported',
+        description: `Successfully parsed ${parsed.method} request to ${parsed.url}`,
+      });
+
+      // Execute immediately if requested
+      if (executeImmediately && parsed.url) {
+        // Execute with the parsed data directly
+        setLoading(true);
+        try {
+          const executeResponse = await axios.post(
+            `${API}/requests/execute`,
+            {
+              method: parsed.method,
+              url: parsed.url,
+              headers: parsed.headers,
+              params: parsed.params,
+              body: parsed.body,
+              auth: parsed.auth
+            },
+            { withCredentials: true }
+          );
+
+          setResponse(executeResponse.data);
+          addToHistory(updatedRequest, executeResponse.data);
+          setLoading(false);
+          
+          toast({
+            title: 'Request sent',
+            description: `${parsed.method} request completed in ${executeResponse.data.time}ms`,
+          });
+        } catch (error) {
+          addToHistory(updatedRequest, { status: 0, statusText: 'Error', time: 0 });
+          setLoading(false);
+          toast({
+            title: 'Request failed',
+            description: error.message,
+            variant: 'destructive'
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: 'Failed to parse cURL',
+        description: error.message || 'Invalid cURL command format',
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col h-full bg-zinc-950">
@@ -341,6 +436,15 @@ const RequestBuilder = ({ request }) => {
               title="Save As"
             >
               <Copy className="w-4 h-4" />
+            </Button>
+
+            <Button
+              onClick={handleImportCurl}
+              variant="ghost"
+              className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+              title="Import from cURL"
+            >
+              <Terminal className="w-4 h-4" />
             </Button>
 
             {!request.request_id.startsWith('req_new_') && (
@@ -785,6 +889,74 @@ const RequestBuilder = ({ request }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import cURL Dialog */}
+      <Dialog open={showCurlDialog} onOpenChange={setShowCurlDialog}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-100 flex items-center gap-2">
+              <Terminal className="w-5 h-5" />
+              Import from cURL
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Paste your cURL command below. The request will be automatically parsed and populated.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                cURL Command
+              </label>
+              <textarea
+                value={curlInput}
+                onChange={(e) => setCurlInput(e.target.value)}
+                onPaste={(e) => {
+                  // Auto-paste detection
+                  setTimeout(() => {
+                    const pastedText = e.clipboardData.getData('text');
+                    if (pastedText.trim().startsWith('curl')) {
+                      setCurlInput(pastedText);
+                    }
+                  }, 0);
+                }}
+                placeholder={`curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{"name": "John"}'`}
+                className="w-full h-48 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleParseCurl(true)}
+                disabled={!curlInput.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Import & Send
+              </Button>
+              <Button
+                onClick={() => handleParseCurl(false)}
+                disabled={!curlInput.trim()}
+                variant="outline"
+                className="flex-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              >
+                <Terminal className="w-4 h-4 mr-2" />
+                Import Only
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowCurlDialog(false);
+                  setCurlInput('');
+                }}
+                className="text-zinc-400 hover:text-zinc-100"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
