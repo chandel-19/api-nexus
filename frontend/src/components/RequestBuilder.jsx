@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal } from 'lucide-react';
+import { Play, Save, Trash2, Plus, X, Copy, CopyPlus, Folder, Terminal } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { parseCurl } from '../utils/curlParser';
@@ -510,7 +510,7 @@ const RequestBuilder = ({ request }) => {
               className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
               title="Save As"
             >
-              <Copy className="w-4 h-4" />
+              <CopyPlus className="w-4 h-4" />
             </Button>
 
             <Button
@@ -927,7 +927,7 @@ const RequestBuilder = ({ request }) => {
                 disabled={!selectedCollection || !saveAsName}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
-                <Copy className="w-4 h-4 mr-2" />
+                <CopyPlus className="w-4 h-4 mr-2" />
                 Save As New
               </Button>
               <Button
