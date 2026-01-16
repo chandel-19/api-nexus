@@ -12,7 +12,8 @@ import {
   Users,
   Edit2,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Download
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
@@ -59,6 +60,80 @@ const Sidebar = () => {
     logout,
     clearHistory
   } = useApp();
+
+  const handleExportCollection = (collection) => {
+    try {
+      const collectionRequests = requests.filter(
+        r => r.collection_id === collection.collection_id
+      );
+
+      const exportData = {
+        schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+        info: {
+          name: collection.name,
+          description: collection.description || '',
+          _postman_id: collection.collection_id,
+          schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+        },
+        item: collectionRequests.map(req => ({
+          name: req.name || 'Untitled Request',
+          request: {
+            method: req.method,
+            header: (req.headers || [])
+              .filter(h => h.enabled)
+              .map(h => ({ key: h.key, value: h.value })),
+            url: {
+              raw: req.url,
+              host: [],
+              path: [],
+              query: (req.params || [])
+                .filter(p => p.enabled)
+                .map(p => ({ key: p.key, value: p.value }))
+            },
+            body: req.body?.type && req.body?.type !== 'none'
+              ? {
+                  mode: req.body.type,
+                  raw: req.body.content || ''
+                }
+              : undefined,
+            auth: req.auth || { type: 'none' }
+          }
+        })),
+        variables: [],
+        metadata: {
+          exportedFrom: 'API Nexus',
+          exportedAt: new Date().toISOString(),
+          collection: {
+            collection_id: collection.collection_id,
+            color: collection.color,
+            pre_request_script: collection.pre_request_script || '',
+            post_request_script: collection.post_request_script || ''
+          }
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${collection.name || 'collection'}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Collection exported',
+        description: `${collection.name} exported successfully`
+      });
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error.message || 'Unable to export collection',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const navigate = useNavigate();
   const [expandedCollections, setExpandedCollections] = useState(new Set(['col_1']));
@@ -280,6 +355,14 @@ const Sidebar = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="bg-zinc-900 border-zinc-800">
                             <DropdownMenuItem
+                            onClick={() => handleExportCollection(collection)}
+                            className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Collection
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
                               onClick={() => {
                                 setEditingCollection(collection);
                               }}
