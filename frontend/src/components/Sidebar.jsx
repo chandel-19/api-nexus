@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Folder,
   Plus,
@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import EnvironmentManager from './EnvironmentManager';
 import OrganizationManager from './OrganizationManager';
@@ -136,6 +136,7 @@ const Sidebar = () => {
   };
 
   const navigate = useNavigate();
+  const location = useLocation();
   const [expandedCollections, setExpandedCollections] = useState(new Set(['col_1']));
   const [activeTab, setActiveTab] = useState('collections');
   const [showEnvironments, setShowEnvironments] = useState(false);
@@ -143,6 +144,24 @@ const Sidebar = () => {
   const [showCollectionManager, setShowCollectionManager] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
   const [deletingCollection, setDeletingCollection] = useState(null);
+
+  useEffect(() => {
+    if (location.pathname === '/collections') {
+      setActiveTab('collections');
+      setShowEnvironments(false);
+      setShowOrgManager(false);
+    } else if (location.pathname === '/history') {
+      setActiveTab('history');
+      setShowEnvironments(false);
+      setShowOrgManager(false);
+    } else if (location.pathname === '/environments') {
+      setShowEnvironments(true);
+      setShowOrgManager(false);
+    } else if (location.pathname === '/organizations') {
+      setShowOrgManager(true);
+      setShowEnvironments(false);
+    }
+  }, [location.pathname]);
 
   // Permission checks
   const canEdit = currentOrgRole === 'edit' || currentOrgRole === 'admin';
@@ -238,8 +257,11 @@ const Sidebar = () => {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator className="bg-zinc-800" />
-              <DropdownMenuItem
-                onClick={() => setShowOrgManager(true)}
+            <DropdownMenuItem
+              onClick={() => {
+                setShowOrgManager(true);
+                navigate('/organizations');
+              }}
                 className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -274,7 +296,10 @@ const Sidebar = () => {
         {/* Tabs */}
         <div className="flex border-b border-zinc-800">
           <button
-            onClick={() => setActiveTab('collections')}
+            onClick={() => {
+              setActiveTab('collections');
+              navigate('/collections');
+            }}
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'collections'
                 ? 'text-zinc-100 border-b-2 border-blue-500'
@@ -285,7 +310,10 @@ const Sidebar = () => {
             Collections
           </button>
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => {
+              setActiveTab('history');
+              navigate('/history');
+            }}
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'history'
                 ? 'text-zinc-100 border-b-2 border-blue-500'
@@ -483,7 +511,10 @@ const Sidebar = () => {
         <div className="p-4 border-t border-zinc-800 space-y-1">
           <Button
             variant="ghost"
-            onClick={() => setShowEnvironments(true)}
+            onClick={() => {
+              setShowEnvironments(true);
+              navigate('/environments');
+            }}
             className="w-full justify-start text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
           >
             <Database className="w-4 h-4 mr-2" />
@@ -516,7 +547,15 @@ const Sidebar = () => {
       </div>
 
       {/* Environment Manager Dialog */}
-      <Dialog open={showEnvironments} onOpenChange={setShowEnvironments}>
+      <Dialog
+        open={showEnvironments}
+        onOpenChange={(open) => {
+          setShowEnvironments(open);
+          if (!open && location.pathname === '/environments') {
+            navigate('/collections');
+          }
+        }}
+      >
         <DialogContent className="max-w-6xl w-[90vw] bg-zinc-950 border-zinc-800 p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-zinc-800">
             <DialogTitle className="text-zinc-100">Environment Manager</DialogTitle>
@@ -528,7 +567,15 @@ const Sidebar = () => {
       </Dialog>
 
       {/* Organization Manager Dialog */}
-      <Dialog open={showOrgManager} onOpenChange={setShowOrgManager}>
+      <Dialog
+        open={showOrgManager}
+        onOpenChange={(open) => {
+          setShowOrgManager(open);
+          if (!open && location.pathname === '/organizations') {
+            navigate('/collections');
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-800 max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-zinc-100">Manage Organizations</DialogTitle>
