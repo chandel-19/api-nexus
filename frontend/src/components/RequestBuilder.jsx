@@ -3,6 +3,7 @@ import { Play, Save, Trash2, Plus, X, Copy, CopyPlus, Folder, Terminal, Globe } 
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { parseCurl } from '../utils/curlParser';
+import { generateCurl } from '../utils/curlGenerator';
 import { substituteRequestVariables } from '../utils/envSubstitution';
 import AutocompleteInput from './AutocompleteInput';
 import {
@@ -301,6 +302,26 @@ const RequestBuilder = ({ request }) => {
     setShowCurlDialog(true);
   };
 
+  const handleCopyCurl = async () => {
+    try {
+      const requestToCopy = currentEnv && currentEnv.variables?.length
+        ? substituteRequestVariables(request, currentEnv)
+        : request;
+      const curlCommand = generateCurl(requestToCopy);
+      await navigator.clipboard.writeText(curlCommand);
+      toast({
+        title: 'cURL copied',
+        description: 'The cURL command has been copied to your clipboard',
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to copy cURL',
+        description: error.message || 'Unable to generate cURL',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleParseCurl = async (executeImmediately = false) => {
     try {
       if (!curlInput.trim()) {
@@ -521,6 +542,15 @@ const RequestBuilder = ({ request }) => {
               title="Import from cURL"
             >
               <Terminal className="w-4 h-4" />
+            </Button>
+
+            <Button
+              onClick={handleCopyCurl}
+              variant="ghost"
+              className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+              title="Copy as cURL"
+            >
+              <Copy className="w-4 h-4" />
             </Button>
 
               {!request.request_id.startsWith('req_new_') && (
