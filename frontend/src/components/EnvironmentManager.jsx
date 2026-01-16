@@ -34,6 +34,9 @@ const EnvironmentManager = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('key'); // 'key', 'value', 'enabled'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
+  const [showCompare, setShowCompare] = useState(false);
+  const [compareEnvAId, setCompareEnvAId] = useState(currentEnv?.env_id || null);
+  const [compareEnvBId, setCompareEnvBId] = useState(null);
   const [newEnv, setNewEnv] = useState({
     name: '',
     variables: [{ key: '', value: '', enabled: true }]
@@ -221,6 +224,10 @@ const EnvironmentManager = ({ onClose }) => {
     setSelectedEnv(env);
     setEditingEnv(null);
     setCreating(false);
+    setShowCompare(false);
+    setCompareEnvAId(env?.env_id || null);
+    const otherEnv = environments.find(e => e.env_id !== env?.env_id);
+    setCompareEnvBId(otherEnv?.env_id || null);
   };
 
   const handleSetAsActive = (env) => {
@@ -229,6 +236,38 @@ const EnvironmentManager = ({ onClose }) => {
       title: 'Environment activated',
       description: `${env.name} is now active`,
     });
+  };
+
+  const getEnvById = (envId) => environments.find(env => env.env_id === envId);
+
+  const getDiffRows = (envA, envB) => {
+    if (!envA || !envB) return [];
+    const mapA = new Map((envA.variables || []).map(v => [v.key || '', v]));
+    const mapB = new Map((envB.variables || []).map(v => [v.key || '', v]));
+    const keys = new Set([...mapA.keys(), ...mapB.keys()]);
+    const rows = [];
+    keys.forEach((key) => {
+      if (!key) return;
+      const a = mapA.get(key);
+      const b = mapB.get(key);
+      const aVal = a?.value ?? '';
+      const bVal = b?.value ?? '';
+      const aEnabled = a?.enabled !== false;
+      const bEnabled = b?.enabled !== false;
+      let status = 'same';
+      if (!a) status = 'only_b';
+      else if (!b) status = 'only_a';
+      else if (aVal !== bVal || aEnabled !== bEnabled) status = 'diff';
+      rows.push({
+        key,
+        aVal,
+        bVal,
+        aEnabled,
+        bEnabled,
+        status,
+      });
+    });
+    return rows.sort((x, y) => x.key.localeCompare(y.key));
   };
 
   return (
@@ -509,6 +548,26 @@ const EnvironmentManager = ({ onClose }) => {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  {environments.length >= 2 && (
+                    <Button
+                      size="sm"
+                      variant={showCompare ? "secondary" : "ghost"}
+                      onClick={() => {
+                        const next = !showCompare;
+                        setShowCompare(next);
+                        if (next) {
+                          setCompareEnvAId(selectedEnv?.env_id || null);
+                          const otherEnv = environments.find(e => e.env_id !== selectedEnv?.env_id);
+                          setCompareEnvBId(otherEnv?.env_id || null);
+                        }
+                      }}
+                      className="h-7 px-2 text-zinc-300 hover:text-zinc-100"
+                      title="Compare environments"
+                    >
+                      <ArrowUpDown className="w-4 h-4 mr-1" />
+                      Compare
+                    </Button>
+                  )}
                   {currentEnv?.env_id !== selectedEnv.env_id && (
                     <Button
                       size="sm"
@@ -570,50 +629,125 @@ const EnvironmentManager = ({ onClose }) => {
               </div>
             </div>
 
-            {/* Variables List */}
-            <div className="flex-1 overflow-y-auto">
-              {selectedEnv.variables && selectedEnv.variables.length > 0 ? (
-                <div className="p-4">
-                  <div className="space-y-2">
-                    {getSortedVariables(selectedEnv.variables).map((variable, index) => {
-                      const originalIndex = selectedEnv.variables.findIndex(
-                        v => v.key === variable.key && v.value === variable.value
-                      );
-                      return (
-                        <div
-                          key={originalIndex}
-                          className="flex items-center gap-2 p-3 bg-zinc-900 rounded border border-zinc-800"
-                        >
-                          <div className="flex-1 grid grid-cols-2 gap-2">
-                            <div>
-                              <div className="text-xs text-zinc-500 mb-1">Key</div>
-                              <div className="text-sm text-zinc-100 font-mono">{variable.key || '(empty)'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-zinc-500 mb-1">Value</div>
-                              <div className="text-sm text-zinc-100 font-mono truncate">{variable.value || '(empty)'}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className={`px-2 py-1 rounded text-xs ${
-                              variable.enabled !== false
+            {/* Compare Panel */}
+            {showCompare ? (
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-zinc-400 mb-2 block">Environment A</label>
+                      <Select value={compareEnvAId || ''} onValueChange={setCompareEnvAId}>
+                        <SelectTrigger className="w-full bg-zinc-900 border-zinc-800 text-zinc-100">
+                          <SelectValue placeholder="Select environment" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                          {environments.map(env => (
+                            <SelectItem key={env.env_id} value={env.env_id}>
+                              {env.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 mb-2 block">Environment B</label>
+                      <Select value={compareEnvBId || ''} onValueChange={setCompareEnvBId}>
+                        <SelectTrigger className="w-full bg-zinc-900 border-zinc-800 text-zinc-100">
+                          <SelectValue placeholder="Select environment" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                          {environments.map(env => (
+                            <SelectItem key={env.env_id} value={env.env_id}>
+                              {env.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {compareEnvAId && compareEnvBId ? (
+                    <div className="space-y-2">
+                      {getDiffRows(getEnvById(compareEnvAId), getEnvById(compareEnvBId)).map((row) => (
+                        <div key={row.key} className="p-3 bg-zinc-900 rounded border border-zinc-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-zinc-100 font-mono">{row.key}</span>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              row.status === 'same'
                                 ? 'bg-green-500/20 text-green-400'
-                                : 'bg-zinc-800 text-zinc-500'
+                                : row.status === 'diff'
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'bg-red-500/20 text-red-400'
                             }`}>
-                              {variable.enabled !== false ? 'Enabled' : 'Disabled'}
+                              {row.status === 'same' ? 'Same' : row.status === 'diff' ? 'Different' : row.status === 'only_a' ? 'Only in A' : 'Only in B'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <div className="text-zinc-500 mb-1">A</div>
+                              <div className="text-zinc-100 font-mono truncate">{row.aVal || '(empty)'}</div>
+                              <div className="text-[11px] text-zinc-500 mt-1">{row.aEnabled ? 'Enabled' : 'Disabled'}</div>
+                            </div>
+                            <div>
+                              <div className="text-zinc-500 mb-1">B</div>
+                              <div className="text-zinc-100 font-mono truncate">{row.bVal || '(empty)'}</div>
+                              <div className="text-[11px] text-zinc-500 mt-1">{row.bEnabled ? 'Enabled' : 'Disabled'}</div>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-zinc-500">Select two environments to compare.</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Variables List */
+              <div className="flex-1 overflow-y-auto">
+                {selectedEnv.variables && selectedEnv.variables.length > 0 ? (
+                  <div className="p-4">
+                    <div className="space-y-2">
+                      {getSortedVariables(selectedEnv.variables).map((variable, index) => {
+                        const originalIndex = selectedEnv.variables.findIndex(
+                          v => v.key === variable.key && v.value === variable.value
+                        );
+                        return (
+                          <div
+                            key={originalIndex}
+                            className="flex items-center gap-2 p-3 bg-zinc-900 rounded border border-zinc-800"
+                          >
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <div>
+                                <div className="text-xs text-zinc-500 mb-1">Key</div>
+                                <div className="text-sm text-zinc-100 font-mono">{variable.key || '(empty)'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-zinc-500 mb-1">Value</div>
+                                <div className="text-sm text-zinc-100 font-mono truncate">{variable.value || '(empty)'}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className={`px-2 py-1 rounded text-xs ${
+                                variable.enabled !== false
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : 'bg-zinc-800 text-zinc-500'
+                              }`}>
+                                {variable.enabled !== false ? 'Enabled' : 'Disabled'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
-                  No variables in this environment
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
+                    No variables in this environment
+                  </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-zinc-500 text-sm">
