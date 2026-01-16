@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Trash2, Plus, X, Copy, CopyPlus, Folder, Terminal } from 'lucide-react';
+import { Play, Save, Trash2, Plus, X, Copy, CopyPlus, Folder, Terminal, Globe } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { parseCurl } from '../utils/curlParser';
 import { substituteRequestVariables } from '../utils/envSubstitution';
+import AutocompleteInput from './AutocompleteInput';
 import {
   Select,
   SelectContent,
@@ -400,100 +401,100 @@ const RequestBuilder = ({ request }) => {
         {/* Request Header */}
         <div className="p-4 border-b border-zinc-800 space-y-3">
           <div className="flex items-center gap-2">
-            <Select
-              value={request.method}
-              onValueChange={(value) => updateField('method', value)}
-            >
-              <SelectTrigger className="w-32 bg-zinc-900 border-zinc-800 text-zinc-100">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800">
-                <SelectItem value="GET" className="text-green-400">GET</SelectItem>
-                <SelectItem value="POST" className="text-blue-400">POST</SelectItem>
-                <SelectItem value="PUT" className="text-yellow-400">PUT</SelectItem>
-                <SelectItem value="DELETE" className="text-red-400">DELETE</SelectItem>
-                <SelectItem value="PATCH" className="text-purple-400">PATCH</SelectItem>
-                <SelectItem value="OPTIONS" className="text-zinc-400">OPTIONS</SelectItem>
-                <SelectItem value="HEAD" className="text-zinc-400">HEAD</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Select
+                value={request.method}
+                onValueChange={(value) => updateField('method', value)}
+              >
+                <SelectTrigger className="w-32 bg-zinc-900 border-zinc-800 text-zinc-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectItem value="GET" className="text-green-400">GET</SelectItem>
+                  <SelectItem value="POST" className="text-blue-400">POST</SelectItem>
+                  <SelectItem value="PUT" className="text-yellow-400">PUT</SelectItem>
+                  <SelectItem value="DELETE" className="text-red-400">DELETE</SelectItem>
+                  <SelectItem value="PATCH" className="text-purple-400">PATCH</SelectItem>
+                  <SelectItem value="OPTIONS" className="text-zinc-400">OPTIONS</SelectItem>
+                  <SelectItem value="HEAD" className="text-zinc-400">HEAD</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <input
-              type="text"
-              value={request.url}
-              onChange={(e) => updateField('url', e.target.value)}
-              placeholder="Enter request URL (use {{variable}} for env vars)"
-              className="flex-1 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
+              <AutocompleteInput
+                type="input"
+                value={request.url}
+                onChange={(e) => updateField('url', e.target.value)}
+                placeholder="Enter request URL (use {{variable}} for env vars)"
+                currentEnv={currentEnv}
+                className="flex-1 min-w-[890px] px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
 
-            <Select
-              value={currentEnv?.env_id || 'none'}
-              onValueChange={(value) => {
-                if (value === 'none') {
-                  setCurrentEnv(null);
-                } else {
-                  const env = environments.find(e => e.env_id === value);
-                  if (env) setCurrentEnv(env);
-                }
-              }}
-            >
-              <SelectTrigger className={`min-w-[180px] max-w-[240px] bg-zinc-900 border-zinc-800 text-zinc-100 px-3 py-2 ${currentEnv ? 'border-blue-500/50' : ''}`}>
-                {currentEnv ? (
-                  <div className="flex items-center gap-1.5 min-w-0 w-full">
-                    <span className="text-sm font-medium text-zinc-100 truncate flex-shrink">
+              <Select
+                value={currentEnv?.env_id || 'none'}
+                onValueChange={(value) => {
+                  if (value === 'none') {
+                    setCurrentEnv(null);
+                  } else {
+                    const env = environments.find(e => e.env_id === value);
+                    if (env) setCurrentEnv(env);
+                  }
+                }}
+              >
+              <SelectTrigger className={`flex-shrink-0 w-auto min-w-[120px] max-w-[160px] bg-zinc-900 border-zinc-800 text-zinc-100 ${currentEnv ? 'border-blue-500/50' : ''}`}>
+                <div className="min-w-0 w-full">
+                  {currentEnv ? (
+                    <span className="text-sm font-medium text-zinc-100 truncate">
                       {currentEnv.name}
                     </span>
-                    <span className="text-xs text-zinc-500 whitespace-nowrap flex-shrink-0">
-                      ({currentEnv.variables?.length || 0} vars)
+                  ) : (
+                    <span className="text-sm text-zinc-500 truncate">
+                      {environments.length === 0 ? "No Environments" : "No Environment"}
                     </span>
-                    <span className="text-xs text-blue-400 whitespace-nowrap flex-shrink-0">• Active</span>
-                  </div>
-                ) : (
-                  <span className="text-sm text-zinc-500">
-                    {environments.length === 0 ? "No Environments" : "No Environment"}
-                  </span>
-                )}
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800">
-                <SelectItem value="none" className="text-zinc-400">
-                  <div className="flex items-center gap-2">
-                    No Environment
-                  </div>
-                </SelectItem>
-                {environments.length === 0 ? (
-                  <div className="px-2 py-4 text-xs text-zinc-500 text-center">
-                    Create an environment first
-                  </div>
-                ) : (
-                  environments.map(env => (
-                    <SelectItem key={env.env_id} value={env.env_id}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{env.name}</span>
-                        <span className="text-xs text-zinc-500">
-                          ({env.variables?.length || 0} vars)
-                        </span>
-                        {currentEnv?.env_id === env.env_id && (
-                          <span className="text-xs text-blue-400">• Active</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+                  )}
+                </div>
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectItem value="none" className="text-zinc-400">
+                    <div className="flex items-center gap-2">
+                      No Environment
+                    </div>
+                  </SelectItem>
+                  {environments.length === 0 ? (
+                    <div className="px-2 py-4 text-xs text-zinc-500 text-center">
+                      Create an environment first
+                    </div>
+                  ) : (
+                    environments.map(env => (
+                      <SelectItem key={env.env_id} value={env.env_id}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{env.name}</span>
+                          <span className="text-xs text-zinc-500">
+                            ({env.variables?.length || 0} vars)
+                          </span>
+                          {currentEnv?.env_id === env.env_id && (
+                            <span className="text-xs text-blue-400">• Active</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Button
-              onClick={handleSendRequest}
-              disabled={loading || !request.url}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 transition-colors"
-              title="Send Request (⌘+Enter or Ctrl+Enter)"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <><Play className="w-4 h-4 mr-2" /> Send</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                onClick={handleSendRequest}
+                disabled={loading || !request.url}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 transition-colors"
+                title="Send Request (⌘+Enter or Ctrl+Enter)"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <><Play className="w-4 h-4 mr-2" /> Send</>
+                )}
+              </Button>
 
             <Button
               onClick={handleSave}
@@ -522,16 +523,17 @@ const RequestBuilder = ({ request }) => {
               <Terminal className="w-4 h-4" />
             </Button>
 
-            {!request.request_id.startsWith('req_new_') && (
-              <Button
-                onClick={() => setShowDeleteDialog(true)}
-                variant="ghost"
-                className="text-red-400 hover:text-red-300 hover:bg-zinc-800"
-                title="Delete (⌘+D or Ctrl+D)"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
+              {!request.request_id.startsWith('req_new_') && (
+                <Button
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="ghost"
+                  className="text-red-400 hover:text-red-300 hover:bg-zinc-800"
+                  title="Delete (⌘+D or Ctrl+D)"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <input
@@ -577,7 +579,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="params" className="p-4 space-y-2">
                 {request.params.map((param, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex items-center gap-2 w-full">
                     <input
                       type="checkbox"
                       checked={param.enabled}
@@ -589,14 +591,15 @@ const RequestBuilder = ({ request }) => {
                       value={param.key}
                       onChange={(e) => updateParam(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[55%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
-                    <input
-                      type="text"
+                    <AutocompleteInput
+                      type="input"
                       value={param.value}
                       onChange={(e) => updateParam(index, 'value', e.target.value)}
                       placeholder="Value"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      currentEnv={currentEnv}
+                      className="w-[100%] min-w-[220px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeParam(index)}
@@ -682,7 +685,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="headers" className="p-4 space-y-2">
                 {request.headers.map((header, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex items-center gap-2 w-full">
                     <input
                       type="checkbox"
                       checked={header.enabled}
@@ -694,14 +697,15 @@ const RequestBuilder = ({ request }) => {
                       value={header.key}
                       onChange={(e) => updateHeader(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[55%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
-                    <input
-                      type="text"
+                    <AutocompleteInput
+                      type="input"
                       value={header.value}
                       onChange={(e) => updateHeader(index, 'value', e.target.value)}
                       placeholder="Value"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      currentEnv={currentEnv}
+                      className="w-[100%] min-w-[220px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeHeader(index)}
@@ -737,10 +741,12 @@ const RequestBuilder = ({ request }) => {
                 </Select>
 
                 {request.body?.type !== 'none' && (
-                  <textarea
+                  <AutocompleteInput
+                    type="textarea"
                     value={request.body?.content || ''}
                     onChange={(e) => updateField('body', { ...request.body, content: e.target.value })}
                     placeholder={request.body?.type === 'json' ? '{\n  "key": "value"\n}' : 'Enter body content'}
+                    currentEnv={currentEnv}
                     className="w-full h-64 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                   />
                 )}
