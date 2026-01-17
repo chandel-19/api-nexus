@@ -7,6 +7,8 @@ export const useEnvAutocomplete = (value, onChange, currentEnv, inputRef) => {
   const [cursorPosition, setCursorPosition] = useState(0);
   const [searchText, setSearchText] = useState('');
   const suggestionsRef = useRef(null);
+  const lastSearchRef = useRef('');
+  const lastSuggestionsRef = useRef([]);
 
   // Get available variables from current environment
   const getVariables = () => {
@@ -60,13 +62,24 @@ export const useEnvAutocomplete = (value, onChange, currentEnv, inputRef) => {
         if (filtered.length > 0) {
           setSuggestions(filtered);
           setShowSuggestions(true);
-          setSelectedIndex(0);
+          const prevSearch = lastSearchRef.current;
+          const prevSuggestionsKey = (lastSuggestionsRef.current || []).join('|');
+          const nextSuggestionsKey = filtered.join('|');
+          if (search !== prevSearch || nextSuggestionsKey !== prevSuggestionsKey) {
+            setSelectedIndex(0);
+          }
+          lastSearchRef.current = search;
+          lastSuggestionsRef.current = filtered;
         } else {
           setShowSuggestions(false);
+          lastSearchRef.current = '';
+          lastSuggestionsRef.current = [];
         }
       } else {
         setShowSuggestions(false);
         setSuggestions([]);
+        lastSearchRef.current = '';
+        lastSuggestionsRef.current = [];
       }
     };
 
@@ -140,6 +153,7 @@ export const useEnvAutocomplete = (value, onChange, currentEnv, inputRef) => {
     searchText,
     insertVariable,
     handleKeyDown,
-    suggestionsRef
+    suggestionsRef,
+    closeSuggestions: () => setShowSuggestions(false)
   };
 };
