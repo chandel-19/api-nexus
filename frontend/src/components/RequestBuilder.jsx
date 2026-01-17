@@ -49,6 +49,14 @@ const RequestBuilder = ({ request }) => {
   const [selectedCollection, setSelectedCollection] = useState(request?.collection_id || null);
   const [saveAsName, setSaveAsName] = useState(request?.name || '');
 
+  // Reset response when opening a new (unsaved) request tab
+  useEffect(() => {
+    if (request?.request_id?.startsWith('req_new_')) {
+      setResponse(null);
+      setLoading(false);
+    }
+  }, [request?.request_id]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
