@@ -618,25 +618,25 @@ const RequestBuilder = ({ request }) => {
               <TabsList className="w-full justify-start flex-nowrap gap-2 border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-2 overflow-x-auto">
                 <TabsTrigger
                   value="params"
-                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Params
                 </TabsTrigger>
                 <TabsTrigger
                   value="auth"
-                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Auth
                 </TabsTrigger>
                 <TabsTrigger
                   value="headers"
-                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Headers
                 </TabsTrigger>
                 <TabsTrigger
                   value="body"
-                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Body
                 </TabsTrigger>
@@ -857,13 +857,13 @@ const RequestBuilder = ({ request }) => {
                   <TabsList className="w-full justify-start flex-nowrap gap-2 border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-2 overflow-x-auto">
                     <TabsTrigger
                       value="body"
-                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
+                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                     >
                       Body
                     </TabsTrigger>
                     <TabsTrigger
                       value="headers"
-                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
+                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                     >
                       Headers
                     </TabsTrigger>
