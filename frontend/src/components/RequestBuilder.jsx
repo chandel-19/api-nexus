@@ -644,7 +644,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="params" className="p-4 space-y-2">
                 {request.params.map((param, index) => (
-                  <div key={index} className="flex items-center gap-2 w-full flex-wrap">
+                  <div key={index} className="flex items-center gap-2 w-full flex-nowrap">
                     <input
                       type="checkbox"
                       checked={param.enabled}
@@ -656,7 +656,7 @@ const RequestBuilder = ({ request }) => {
                       value={param.key}
                       onChange={(e) => updateParam(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="w-full sm:w-[40%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <AutocompleteInput
                       type="input"
@@ -664,7 +664,7 @@ const RequestBuilder = ({ request }) => {
                       onChange={(e) => updateParam(index, 'value', e.target.value)}
                       placeholder="Value"
                       currentEnv={currentEnv}
-                      className="flex-1 min-w-[220px] w-full sm:w-auto px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeParam(index)}
@@ -710,39 +710,39 @@ const RequestBuilder = ({ request }) => {
                 )}
 
                 {request.auth?.type === 'apikey' && (
-                  <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-nowrap">
                     <input
                       type="text"
                       value={request.auth?.key || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, key: e.target.value })}
                       placeholder="Key"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <input
                       type="text"
                       value={request.auth?.value || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, value: e.target.value })}
                       placeholder="Value"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 )}
 
                 {request.auth?.type === 'basic' && (
-                  <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-nowrap">
                     <input
                       type="text"
                       value={request.auth?.username || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, username: e.target.value })}
                       placeholder="Username"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <input
                       type="password"
                       value={request.auth?.password || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, password: e.target.value })}
                       placeholder="Password"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 )}
@@ -750,7 +750,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="headers" className="p-4 space-y-2">
                 {request.headers.map((header, index) => (
-                  <div key={index} className="flex items-center gap-2 w-full flex-wrap">
+                  <div key={index} className="flex items-center gap-2 w-full flex-nowrap">
                     <input
                       type="checkbox"
                       checked={header.enabled}
@@ -762,7 +762,7 @@ const RequestBuilder = ({ request }) => {
                       value={header.key}
                       onChange={(e) => updateHeader(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="w-full sm:w-[40%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <AutocompleteInput
                       type="input"
@@ -770,7 +770,7 @@ const RequestBuilder = ({ request }) => {
                       onChange={(e) => updateHeader(index, 'value', e.target.value)}
                       placeholder="Value"
                       currentEnv={currentEnv}
-                      className="flex-1 min-w-[220px] w-full sm:w-auto px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeHeader(index)}
@@ -824,7 +824,7 @@ const RequestBuilder = ({ request }) => {
                       onChange={(e) => updateField('body', { ...request.body, content: e.target.value })}
                       placeholder={request.body?.type === 'json' ? '{\n  \"key\": \"value\"\n}' : 'Enter body content'}
                       currentEnv={currentEnv}
-                      className="w-full h-64 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                      className="w-full h-[28rem] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                     />
                   </div>
                 )}
