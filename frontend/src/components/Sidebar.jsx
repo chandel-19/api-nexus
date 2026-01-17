@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Folder,
   Plus,
@@ -60,6 +60,7 @@ const Sidebar = () => {
     logout,
     clearHistory
   } = useApp();
+  const fileInputRef = useRef(null);
 
   const buildExportUrl = (req) => {
     let url = req.url || '';
@@ -150,6 +151,158 @@ const Sidebar = () => {
   const [editingCollection, setEditingCollection] = useState(null);
   const [deletingCollection, setDeletingCollection] = useState(null);
   const [collectionSearch, setCollectionSearch] = useState('');
+  const getRawUrl = (url) => {
+    if (!url) return '';
+    if (typeof url === 'string') return url;
+    if (url.raw) return url.raw;
+    const protocol = url.protocol ? `${url.protocol}://` : '';
+    const host = Array.isArray(url.host) ? url.host.join('.') : (url.host || '');
+    const path = Array.isArray(url.path) ? `/${url.path.join('/')}` : (url.path ? `/${url.path}` : '');
+    const query = Array.isArray(url.query) && url.query.length > 0
+      ? `?${url.query.map(q => `${encodeURIComponent(q.key || '')}=${encodeURIComponent(q.value || '')}`).join('&')}`
+      : '';
+    return `${protocol}${host}${path}${query}`.trim();
+  };
+
+  const parseRequestBody = (body) => {
+    if (!body || !body.mode) return { type: 'none', content: '' };
+    if (body.mode === 'raw') {
+      const content = body.raw || '';
+      let type = 'raw';
+      try {
+        JSON.parse(content);
+        type = 'json';
+      } catch {
+        // keep as raw
+      }
+      return { type, content };
+    }
+    if (body.mode === 'formdata' || body.mode === 'urlencoded') {
+      const items = body[body.mode] || [];
+      const content = items
+        .filter(item => item && item.disabled !== true)
+        .map(item => `${item.key || ''}=${item.value || ''}`)
+        .join('&');
+      return { type: 'form', content };
+    }
+    return { type: 'raw', content: body.raw || '' };
+  };
+
+  const parseAuth = (auth) => {
+    if (!auth || !auth.type || auth.type === 'noauth') {
+      return { type: 'none' };
+    }
+    if (auth.type === 'basic') {
+      const user = auth.basic?.find(i => i.key === 'username')?.value || '';
+      const pass = auth.basic?.find(i => i.key === 'password')?.value || '';
+      return { type: 'basic', username: user, password: pass };
+    }
+    if (auth.type === 'bearer') {
+      const token = auth.bearer?.find(i => i.key === 'token')?.value || '';
+      return { type: 'bearer', token };
+    }
+    if (auth.type === 'apikey') {
+      const key = auth.apikey?.find(i => i.key === 'key')?.value || '';
+      const value = auth.apikey?.find(i => i.key === 'value')?.value || '';
+      return { type: 'apikey', key, value };
+    }
+    return { type: 'none' };
+  };
+
+  const flattenItems = (items, prefix = '') => {
+    if (!Array.isArray(items)) return [];
+    const results = [];
+    items.forEach(item => {
+      if (item?.item && Array.isArray(item.item)) {
+        const nextPrefix = prefix ? `${prefix} / ${item.name || 'Folder'}` : (item.name || 'Folder');
+        results.push(...flattenItems(item.item, nextPrefix));
+      } else if (item?.request) {
+        results.push({
+          ...item,
+          name: prefix ? `${prefix} / ${item.name || 'Untitled Request'}` : (item.name || 'Untitled Request')
+        });
+      }
+    });
+    return results;
+  };
+
+  const handleImportCollection = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentOrg) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data?.info?.name || !Array.isArray(data?.item)) {
+        throw new Error('Invalid Postman collection format');
+      }
+
+      const collectionPayload = {
+        name: data.info.name || 'Imported Collection',
+        description: data.info.description || '',
+        color: '#3B82F6',
+        pre_request_script: '',
+        post_request_script: ''
+      };
+
+      const collectionRes = await axios.post(
+        `${BACKEND_URL}/api/organizations/${currentOrg.org_id}/collections`,
+        collectionPayload,
+        { withCredentials: true }
+      );
+
+      const createdCollection = collectionRes.data;
+      const flatItems = flattenItems(data.item);
+
+      for (const item of flatItems) {
+        const req = item.request || {};
+        const url = getRawUrl(req.url);
+        const params = Array.isArray(req.url?.query)
+          ? req.url.query.map(q => ({
+              key: q.key || '',
+              value: q.value || '',
+              enabled: q.disabled !== true
+            }))
+          : [];
+        const headers = Array.isArray(req.header)
+          ? req.header.map(h => ({
+              key: h.key || '',
+              value: h.value || '',
+              enabled: h.disabled !== true
+            }))
+          : [];
+
+        await axios.post(
+          `${BACKEND_URL}/api/requests`,
+          {
+            collection_id: createdCollection.collection_id,
+            name: item.name || req.name || 'Untitled Request',
+            method: (req.method || 'GET').toUpperCase(),
+            url: url || '/',
+            headers,
+            params,
+            body: parseRequestBody(req.body),
+            auth: parseAuth(req.auth)
+          },
+          { withCredentials: true }
+        );
+      }
+
+      await refreshCollections?.();
+      toast({
+        title: 'Collection imported',
+        description: `${createdCollection.name} imported with ${flatItems.length} request${flatItems.length !== 1 ? 's' : ''}`
+      });
+    } catch (error) {
+      toast({
+        title: 'Import failed',
+        description: error.message || 'Unable to import collection',
+        variant: 'destructive'
+      });
+    } finally {
+      event.target.value = '';
+    }
+  };
+
 
   useEffect(() => {
     if (location.pathname === '/collections') {
@@ -367,6 +520,24 @@ const Sidebar = () => {
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Collection
+                  </Button>
+                </div>
+              )}
+              {canEdit && (
+                <div className="px-4 pb-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={handleImportCollection}
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="ghost"
+                    className="w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-dashed border-zinc-700"
+                  >
+                    Import Collection
                   </Button>
                 </div>
               )}
