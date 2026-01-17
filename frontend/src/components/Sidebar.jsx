@@ -61,6 +61,18 @@ const Sidebar = () => {
     clearHistory
   } = useApp();
 
+  const buildExportUrl = (req) => {
+    let url = req.url || '';
+    const queryParams = (req.params || []).filter(p => p.enabled);
+    if (queryParams.length > 0) {
+      const paramsString = queryParams
+        .map(p => `${encodeURIComponent(p.key || '')}=${encodeURIComponent(p.value || '')}`)
+        .join('&');
+      url += (url.includes('?') ? '&' : '?') + paramsString;
+    }
+    return url || '/';
+  };
+
   const handleExportCollection = (collection) => {
     try {
       const collectionRequests = requests.filter(
@@ -82,14 +94,7 @@ const Sidebar = () => {
             header: (req.headers || [])
               .filter(h => h.enabled)
               .map(h => ({ key: h.key, value: h.value })),
-            url: {
-              raw: req.url,
-              host: [],
-              path: [],
-              query: (req.params || [])
-                .filter(p => p.enabled)
-                .map(p => ({ key: p.key, value: p.value }))
-            },
+            url: buildExportUrl(req),
             body: req.body?.type && req.body?.type !== 'none'
               ? {
                   mode: req.body.type,
