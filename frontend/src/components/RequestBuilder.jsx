@@ -421,8 +421,8 @@ const RequestBuilder = ({ request }) => {
       <div className="flex flex-col h-full bg-zinc-950">
         {/* Request Header */}
         <div className="p-4 border-b border-zinc-800 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap flex-1 min-w-0">
               <Select
                 value={request.method}
                 onValueChange={(value) => updateField('method', value)}
@@ -447,7 +447,7 @@ const RequestBuilder = ({ request }) => {
                 onChange={(e) => updateField('url', e.target.value)}
                 placeholder="Enter request URL (use {{variable}} for env vars)"
                 currentEnv={currentEnv}
-                className="flex-1 min-w-[890px] px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="flex-1 min-w-0 w-full md:min-w-[420px] lg:min-w-[520px] xl:min-w-[680px] px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
 
               <Select
@@ -503,7 +503,7 @@ const RequestBuilder = ({ request }) => {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 justify-end flex-wrap lg:flex-nowrap sm:ml-auto flex-shrink-0">
               <Button
                 onClick={handleSendRequest}
                 disabled={loading || !request.url}
@@ -580,28 +580,28 @@ const RequestBuilder = ({ request }) => {
           {/* Left: Request Config */}
           <div className="w-1/2 border-r border-zinc-800 overflow-y-auto">
             <Tabs defaultValue="params" className="w-full">
-              <TabsList className="w-full justify-start border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-0">
+              <TabsList className="w-full justify-start flex-nowrap gap-2 border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-2 overflow-x-auto">
                 <TabsTrigger
                   value="params"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
                 >
                   Params
                 </TabsTrigger>
                 <TabsTrigger
                   value="auth"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
                 >
                   Auth
                 </TabsTrigger>
                 <TabsTrigger
                   value="headers"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
                 >
                   Headers
                 </TabsTrigger>
                 <TabsTrigger
                   value="body"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
                 >
                   Body
                 </TabsTrigger>
@@ -609,7 +609,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="params" className="p-4 space-y-2">
                 {request.params.map((param, index) => (
-                  <div key={index} className="flex items-center gap-2 w-full">
+                  <div key={index} className="flex items-center gap-2 w-full flex-wrap">
                     <input
                       type="checkbox"
                       checked={param.enabled}
@@ -621,7 +621,7 @@ const RequestBuilder = ({ request }) => {
                       value={param.key}
                       onChange={(e) => updateParam(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="w-[55%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full sm:w-[40%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <AutocompleteInput
                       type="input"
@@ -629,7 +629,7 @@ const RequestBuilder = ({ request }) => {
                       onChange={(e) => updateParam(index, 'value', e.target.value)}
                       placeholder="Value"
                       currentEnv={currentEnv}
-                      className="w-[100%] min-w-[220px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="flex-1 min-w-[220px] w-full sm:w-auto px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeParam(index)}
@@ -715,7 +715,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="headers" className="p-4 space-y-2">
                 {request.headers.map((header, index) => (
-                  <div key={index} className="flex items-center gap-2 w-full">
+                  <div key={index} className="flex items-center gap-2 w-full flex-wrap">
                     <input
                       type="checkbox"
                       checked={header.enabled}
@@ -727,7 +727,7 @@ const RequestBuilder = ({ request }) => {
                       value={header.key}
                       onChange={(e) => updateHeader(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="w-[55%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full sm:w-[40%] min-w-[160px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <AutocompleteInput
                       type="input"
@@ -735,7 +735,7 @@ const RequestBuilder = ({ request }) => {
                       onChange={(e) => updateHeader(index, 'value', e.target.value)}
                       placeholder="Value"
                       currentEnv={currentEnv}
-                      className="w-[100%] min-w-[220px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="flex-1 min-w-[220px] w-full sm:w-auto px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeHeader(index)}
@@ -806,16 +806,16 @@ const RequestBuilder = ({ request }) => {
                 </div>
 
                 <Tabs defaultValue="body" className="flex-1">
-                  <TabsList className="w-full justify-start border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-0">
+                  <TabsList className="w-full justify-start flex-nowrap gap-2 border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-2 overflow-x-auto">
                     <TabsTrigger
                       value="body"
-                      className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
                     >
                       Body
                     </TabsTrigger>
                     <TabsTrigger
                       value="headers"
-                      className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500 whitespace-nowrap"
                     >
                       Headers
                     </TabsTrigger>
