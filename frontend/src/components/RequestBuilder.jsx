@@ -265,6 +265,33 @@ const RequestBuilder = ({ request }) => {
     }
   };
 
+  const handleBeautifyBody = () => {
+    try {
+      const content = request.body?.content || '';
+      if (!content.trim()) {
+        toast({
+          title: 'Nothing to format',
+          description: 'Body is empty',
+          variant: 'destructive'
+        });
+        return;
+      }
+      const parsed = JSON.parse(content);
+      const formatted = JSON.stringify(parsed, null, 2);
+      updateField('body', { ...request.body, content: formatted });
+      toast({
+        title: 'Beautified',
+        description: 'JSON formatted successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Invalid JSON',
+        description: 'Please provide valid JSON to beautify',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const updateField = (field, value) => {
     updateRequest(request.request_id, { [field]: value });
   };
@@ -779,14 +806,27 @@ const RequestBuilder = ({ request }) => {
                 </Select>
 
                 {request.body?.type !== 'none' && (
-                  <AutocompleteInput
-                    type="textarea"
-                    value={request.body?.content || ''}
-                    onChange={(e) => updateField('body', { ...request.body, content: e.target.value })}
-                    placeholder={request.body?.type === 'json' ? '{\n  "key": "value"\n}' : 'Enter body content'}
-                    currentEnv={currentEnv}
-                    className="w-full h-64 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleBeautifyBody}
+                        className="text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800"
+                      >
+                        Beautify
+                      </Button>
+                    </div>
+                    <AutocompleteInput
+                      type="textarea"
+                      value={request.body?.content || ''}
+                      onChange={(e) => updateField('body', { ...request.body, content: e.target.value })}
+                      placeholder={request.body?.type === 'json' ? '{\n  \"key\": \"value\"\n}' : 'Enter body content'}
+                      currentEnv={currentEnv}
+                      className="w-full h-64 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    />
+                  </div>
                 )}
               </TabsContent>
             </Tabs>
