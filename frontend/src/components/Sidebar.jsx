@@ -144,6 +144,7 @@ const Sidebar = () => {
   const [showCollectionManager, setShowCollectionManager] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
   const [deletingCollection, setDeletingCollection] = useState(null);
+  const [collectionSearch, setCollectionSearch] = useState('');
 
   useEffect(() => {
     if (location.pathname === '/collections') {
@@ -223,6 +224,18 @@ const Sidebar = () => {
     };
     return colors[method] || 'text-zinc-400';
   };
+
+  const normalizedSearch = collectionSearch.trim().toLowerCase();
+  const filteredCollections = normalizedSearch
+    ? collections.filter(collection => {
+        const nameMatch = collection.name?.toLowerCase().includes(normalizedSearch);
+        const requestMatch = requests.some(req =>
+          req.collection_id === collection.collection_id &&
+          (req.name || '').toLowerCase().includes(normalizedSearch)
+        );
+        return nameMatch || requestMatch;
+      })
+    : collections;
 
   return (
     <>
@@ -329,6 +342,16 @@ const Sidebar = () => {
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'collections' ? (
             <div className="py-2">
+              <div className="px-4 pb-2">
+                <input
+                  type="text"
+                  value={collectionSearch}
+                  onChange={(e) => setCollectionSearch(e.target.value)}
+                  placeholder="Search collections"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
               {/* Create Collection Button (Edit/Admin only) */}
               {canEdit && (
                 <div className="px-4 pb-2">
@@ -343,9 +366,10 @@ const Sidebar = () => {
                 </div>
               )}
 
-              {collections.map(collection => {
+              {filteredCollections.map(collection => {
                 const collectionRequests = requests.filter(
                   r => r.collection_id === collection.collection_id
+                    && (!normalizedSearch || (r.name || '').toLowerCase().includes(normalizedSearch))
                 );
                 const isExpanded = expandedCollections.has(collection.collection_id);
 
@@ -430,6 +454,11 @@ const Sidebar = () => {
                             </span>
                           </button>
                         ))}
+                        {collectionRequests.length === 0 && normalizedSearch && (
+                          <div className="px-4 py-2 text-xs text-zinc-500">
+                            No matching requests
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -441,6 +470,12 @@ const Sidebar = () => {
                   No collections yet
                   <br />
                   <span className="text-xs text-zinc-600">Click &quot;Create Collection&quot; to get started</span>
+                </div>
+              )}
+
+              {collections.length > 0 && filteredCollections.length === 0 && (
+                <div className="px-4 py-6 text-center text-zinc-500 text-sm">
+                  No collections match "{collectionSearch}"
                 </div>
               )}
             </div>
