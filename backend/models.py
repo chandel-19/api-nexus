@@ -45,6 +45,10 @@ class UpdateMemberRole(BaseModel):
     role: str  # "admin", "edit", or "view"
 
 
+class SsoAllowlistUpdate(BaseModel):
+    emails: List[str] = []
+
+
 # Collection Models
 class Collection(BaseModel):
     collection_id: str
