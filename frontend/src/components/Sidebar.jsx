@@ -398,8 +398,18 @@ const Sidebar = () => {
   return (
     <>
       <div className="w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col h-screen">
-        {/* Org Switcher */}
+        {/* Brand */}
         <div className="p-4 border-b border-zinc-800">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="font-semibold text-zinc-900">API Nexus</div>
+          </div>
+
+          {/* Org Switcher */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

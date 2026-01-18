@@ -90,9 +90,6 @@ const TabBar = () => {
                 >
                   New Request
                 </button>
-                <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors">
-                  Browse Collections
-                </button>
               </div>
               <div className="mt-8 text-xs text-zinc-600 space-y-2">
                 <div className="text-sm font-semibold text-zinc-500 mb-3">⌨️ Keyboard Shortcuts</div>
