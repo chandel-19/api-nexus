@@ -194,3 +194,7 @@ class CollectionScripts(BaseModel):
 # Auth Models
 class SessionExchange(BaseModel):
     session_id: str
+
+
+class GoogleAuth(BaseModel):
+    id_token: str

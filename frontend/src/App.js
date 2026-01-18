@@ -7,7 +7,6 @@ import Sidebar from "./components/Sidebar";
 import TabBar from "./components/TabBar";
 import CommandPalette from "./components/CommandPalette";
 import Login from "./pages/Login";
-import AuthCallback from "./pages/AuthCallback";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const Dashboard = () => {
@@ -25,11 +24,6 @@ const Dashboard = () => {
 // Router component to handle auth callback
 function AppRouter() {
   const location = useLocation();
-  
-  // Check URL fragment (not query params) for session_id
-  if (location.hash?.includes('session_id=')) {
-    return <AuthCallback />;
-  }
   
   return (
     <Routes>

@@ -24,6 +24,28 @@ async def exchange_session_id(session_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Auth service error: {str(e)}")
 
 
+async def verify_google_id_token(id_token: str, client_id: str) -> dict:
+    """Verify Google ID token and return user info"""
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Google client ID not configured")
+    try:
+        response = requests.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": id_token},
+            timeout=10
+        )
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid Google token")
+        data = response.json()
+        if data.get("aud") != client_id:
+            raise HTTPException(status_code=401, detail="Invalid Google token audience")
+        if str(data.get("email_verified")).lower() != "true":
+            raise HTTPException(status_code=401, detail="Google email not verified")
+        return data
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Google auth error: {str(e)}")
+
+
 async def create_or_update_user(db: AsyncIOMotorDatabase, user_data: dict) -> dict:
     """Create or update user in database"""
     email = user_data.get("email")

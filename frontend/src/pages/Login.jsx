@@ -1,12 +1,93 @@
-import React from 'react';
-import { Button } from '../components/ui/button';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from '../hooks/use-toast';
 
 const Login = () => {
-  const handleLogin = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + '/dashboard';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  };
+  const navigate = useNavigate();
+  const buttonRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
+  useEffect(() => {
+    if (!clientId) return;
+    if (window.google?.accounts?.id) {
+      setScriptLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setScriptLoaded(true);
+    document.body.appendChild(script);
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!clientId || !scriptLoaded || !buttonRef.current) return;
+    const handleCredential = async (response) => {
+      if (!response?.credential) {
+        toast({ title: 'Google sign-in failed', variant: 'destructive' });
+        return;
+      }
+      setLoading(true);
+      try {
+        const authResponse = await axios.post(
+          `${BACKEND_URL}/api/auth/google`,
+          { id_token: response.credential },
+          { withCredentials: true }
+        );
+
+        const userData = authResponse.data;
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        let organizations = [];
+        for (let i = 0; i < 5; i++) {
+          try {
+            const orgsResponse = await axios.get(
+              `${BACKEND_URL}/api/organizations`,
+              { withCredentials: true }
+            );
+            organizations = orgsResponse.data;
+            break;
+          } catch (e) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+        localStorage.setItem('auth_orgs', JSON.stringify(organizations));
+        localStorage.setItem('auth_timestamp', Date.now().toString());
+
+        window.location.href = '/dashboard';
+      } catch (error) {
+        console.error('Google login error:', error);
+        toast({
+          title: 'Authentication failed',
+          description: error.response?.data?.detail || error.message,
+          variant: 'destructive'
+        });
+        navigate('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    buttonRef.current.innerHTML = '';
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleCredential
+    });
+    window.google.accounts.id.renderButton(buttonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'pill',
+      width: 360
+    });
+  }, [BACKEND_URL, clientId, navigate, scriptLoaded]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center p-4">
@@ -32,24 +113,19 @@ const Login = () => {
               </p>
             </div>
 
-            <Button
-              onClick={handleLogin}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-medium rounded-xl transition-all transform hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/20"
-            >
-              <svg className="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              Continue with Google
-            </Button>
+            {clientId ? (
+              <div className="flex justify-center">
+                <div ref={buttonRef} className="w-full flex justify-center" />
+              </div>
+            ) : (
+              <div className="text-sm text-red-500">
+                Google login is not configured. Set REACT_APP_GOOGLE_CLIENT_ID.
+              </div>
+            )}
 
-            <div className="pt-4 border-t border-zinc-800">
-              <p className="text-xs text-zinc-600 text-center">
-                By continuing, you agree to our Terms of Service and Privacy Policy
-              </p>
-            </div>
+            {loading && (
+              <p className="text-xs text-zinc-500 text-center">Signing you in...</p>
+            )}
           </div>
         </div>
 

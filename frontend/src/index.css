@@ -82,16 +82,6 @@ code {
     }
 }
 
-/* Hide Emergent badge */
-#emergent-badge,
-a[href*="emergent.sh"][id*="badge"],
-a[href*="emergentagent.com"][id*="badge"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
 @layer base {
     [data-debug-wrapper="true"] {
         display: contents !important;

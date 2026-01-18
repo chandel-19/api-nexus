@@ -19,46 +19,6 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>API Nexus - API Testing Tool</title>
-        <style>
-            /* Hide Emergent badge if it gets injected */
-            #emergent-badge,
-            a[href*="emergent.sh"],
-            a[href*="emergentagent.com"][id*="badge"],
-            a[href*="emergent"][id*="badge"] {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-        </style>
-        <script>
-            // Remove Emergent badge if it gets injected
-            (function() {
-                function removeBadge() {
-                    var badge = document.getElementById('emergent-badge');
-                    if (badge) {
-                        badge.remove();
-                    }
-                    // Also check for any links with emergent in href
-                    var links = document.querySelectorAll('a[href*="emergent"]');
-                    links.forEach(function(link) {
-                        if (link.id && link.id.includes('badge')) {
-                            link.remove();
-                        }
-                    });
-                }
-                // Run immediately
-                removeBadge();
-                // Run after DOM is ready
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', removeBadge);
-                }
-                // Run after page load
-                window.addEventListener('load', removeBadge);
-                // Run periodically to catch dynamically injected badges
-                setInterval(removeBadge, 1000);
-            })();
-        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

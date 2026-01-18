@@ -18,10 +18,10 @@ from models import (
     Collection, CollectionCreate, CollectionUpdate,
     Request as RequestModel, RequestCreate, RequestUpdate, RequestExecute,
     History, Environment, EnvironmentCreate, EnvironmentUpdate, SsoAllowlistUpdate,
-    SessionExchange, KeyValue
+    SessionExchange, GoogleAuth, KeyValue
 )
 from auth import (
-    exchange_session_id, create_or_update_user, create_session,
+    exchange_session_id, verify_google_id_token, create_or_update_user, create_session,
     get_current_user, delete_session
 )
 from permissions import (
@@ -56,6 +56,39 @@ logger = logging.getLogger(__name__)
 
 # ============= Authentication Endpoints =============
 
+async def get_allowlisted_orgs_or_raise(email: str):
+    """Return allowlisted orgs or raise if SSO allowlist blocks this email."""
+    allowlist_count = await db.org_sso_allowlists.count_documents({"emails": {"$exists": True, "$ne": []}})
+    if allowlist_count == 0:
+        return []
+
+    allowed_orgs = await db.org_sso_allowlists.find(
+        {"emails": email},
+        {"_id": 0, "org_id": 1}
+    ).to_list(length=None)
+
+    if allowed_orgs:
+        return allowed_orgs
+
+    # Allow org owners/admins to avoid lockout
+    existing_user = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+    if existing_user:
+        allowlisted_org_ids = await db.org_sso_allowlists.distinct("org_id")
+        admin_org = await db.organizations.find_one(
+            {
+                "org_id": {"$in": allowlisted_org_ids},
+                "$or": [
+                    {"owner_id": existing_user["user_id"]},
+                    {"member_roles": {"$elemMatch": {"user_id": existing_user["user_id"], "role": "admin"}}}
+                ]
+            },
+            {"_id": 0, "org_id": 1}
+        )
+        if admin_org:
+            return []
+
+    raise HTTPException(status_code=403, detail="Email not allowed for SSO login")
+
 @api_router.post("/auth/session")
 async def auth_session(session_data: SessionExchange):
     """Exchange session_id for user data and create session"""
@@ -66,34 +99,7 @@ async def auth_session(session_data: SessionExchange):
         if not email:
             raise HTTPException(status_code=400, detail="Email not found in auth response")
 
-        # Enforce SSO allowlist only if any org has a non-empty allowlist
-        allowlist_count = await db.org_sso_allowlists.count_documents({"emails": {"$exists": True, "$ne": []}})
-        allowed_orgs = []
-        if allowlist_count > 0:
-            allowed_orgs = await db.org_sso_allowlists.find(
-                {"emails": email},
-                {"_id": 0, "org_id": 1}
-            ).to_list(length=None)
-
-            if not allowed_orgs:
-                # Allow org owners/admins to avoid lockout
-                existing_user = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
-                if existing_user:
-                    allowlisted_org_ids = await db.org_sso_allowlists.distinct("org_id")
-                    admin_org = await db.organizations.find_one(
-                        {
-                            "org_id": {"$in": allowlisted_org_ids},
-                            "$or": [
-                                {"owner_id": existing_user["user_id"]},
-                                {"member_roles": {"$elemMatch": {"user_id": existing_user["user_id"], "role": "admin"}}}
-                            ]
-                        },
-                        {"_id": 0, "org_id": 1}
-                    )
-                    if not admin_org:
-                        raise HTTPException(status_code=403, detail="Email not allowed for SSO login")
-                else:
-                    raise HTTPException(status_code=403, detail="Email not allowed for SSO login")
+        allowed_orgs = await get_allowlisted_orgs_or_raise(email)
 
         # Create or update user
         user = await create_or_update_user(db, user_data)
@@ -144,6 +150,70 @@ async def auth_session(session_data: SessionExchange):
         return response
     except Exception as e:
         logger.error(f"Session exchange error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/auth/google")
+async def auth_google(payload: GoogleAuth):
+    """Authenticate with Google ID token and create session"""
+    try:
+        google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+        token_info = await verify_google_id_token(payload.id_token, google_client_id)
+        email = (token_info.get("email") or "").strip().lower()
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in Google response")
+
+        allowed_orgs = await get_allowlisted_orgs_or_raise(email)
+
+        user = await create_or_update_user(db, {
+            "email": email,
+            "name": token_info.get("name") or token_info.get("given_name") or email.split("@")[0],
+            "picture": token_info.get("picture")
+        })
+
+        # Auto-join user to allowlisted orgs (view role) if needed
+        for entry in allowed_orgs:
+            org_id = entry.get("org_id")
+            if not org_id:
+                continue
+            org = await db.organizations.find_one(
+                {"org_id": org_id},
+                {"_id": 0, "members": 1}
+            )
+            if not org:
+                continue
+            if user["user_id"] in (org.get("members") or []):
+                continue
+            try:
+                await add_user_to_org(db, org_id, user["user_id"], role="view")
+            except HTTPException:
+                pass
+
+        session_token = f"session_{uuid.uuid4().hex}"
+        await create_session(db, user["user_id"], session_token)
+
+        user_response = {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user.get("picture")
+        }
+
+        response = JSONResponse(content=user_response)
+        cookie_secure = os.environ.get("COOKIE_SECURE", "").lower() in ["1", "true", "yes"]
+        cookie_samesite = "none" if cookie_secure else "lax"
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=cookie_secure,
+            samesite=cookie_samesite,
+            max_age=7 * 24 * 60 * 60,
+            path="/"
+        )
+        return response
+    except Exception as e:
+        logger.error(f"Google auth error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
