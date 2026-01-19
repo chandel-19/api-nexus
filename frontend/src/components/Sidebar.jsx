@@ -141,9 +141,45 @@ const Sidebar = () => {
     }
   };
 
+  const handleCreateFolder = async (collection) => {
+    if (!collection) return;
+    const input = window.prompt('Folder name (use "/" for nested folders):');
+    const raw = (input || '').trim();
+    if (!raw) return;
+    const normalized = raw
+      .split(/\s*\/\s*/)
+      .map(part => part.trim())
+      .filter(Boolean)
+      .join(' / ');
+
+    if (!normalized) return;
+    const currentFolders = Array.isArray(collection.folders) ? collection.folders : [];
+    if (currentFolders.includes(normalized)) {
+      toast({ title: 'Folder already exists', description: normalized });
+      return;
+    }
+
+    try {
+      await axios.put(
+        `${BACKEND_URL}/api/collections/${collection.collection_id}`,
+        { folders: [...currentFolders, normalized] },
+        { withCredentials: true }
+      );
+      await refreshCollections?.();
+      toast({ title: 'Folder created', description: normalized });
+    } catch (error) {
+      toast({
+        title: 'Failed to create folder',
+        description: error.response?.data?.detail || error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedCollections, setExpandedCollections] = useState(new Set(['col_1']));
+  const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [activeTab, setActiveTab] = useState('collections');
   const [showEnvironments, setShowEnvironments] = useState(false);
   const [showOrgManager, setShowOrgManager] = useState(false);
@@ -209,21 +245,185 @@ const Sidebar = () => {
     return { type: 'none' };
   };
 
-  const flattenItems = (items, prefix = '') => {
+  const flattenItemsWithPath = (items, path = []) => {
     if (!Array.isArray(items)) return [];
     const results = [];
     items.forEach(item => {
       if (item?.item && Array.isArray(item.item)) {
-        const nextPrefix = prefix ? `${prefix} / ${item.name || 'Folder'}` : (item.name || 'Folder');
-        results.push(...flattenItems(item.item, nextPrefix));
+        const folderName = item.name || 'Folder';
+        results.push(...flattenItemsWithPath(item.item, [...path, folderName]));
       } else if (item?.request) {
         results.push({
           ...item,
-          name: prefix ? `${prefix} / ${item.name || 'Untitled Request'}` : (item.name || 'Untitled Request')
+          name: item.name || 'Untitled Request',
+          folderPath: path
         });
       }
     });
     return results;
+  };
+
+  const buildRequestTree = (items, folderPaths = []) => {
+    const root = { folders: {}, requests: [] };
+
+    const ensureFolderPath = (segments) => {
+      let node = root;
+      segments.forEach((segment) => {
+        const name = (segment || '').trim();
+        if (!name) return;
+        if (!node.folders[name]) {
+          node.folders[name] = { folders: {}, requests: [] };
+        }
+        node = node.folders[name];
+      });
+    };
+
+    (folderPaths || []).forEach((path) => {
+      if (Array.isArray(path)) {
+        ensureFolderPath(path);
+      } else if (typeof path === 'string') {
+        ensureFolderPath(path.split(/\s*\/\s*/));
+      }
+    });
+
+    (items || []).forEach((req) => {
+      const rawName = (req.name || 'Untitled Request').trim();
+      const folderParts = Array.isArray(req.folder_path)
+        ? req.folder_path.filter(Boolean).map(part => String(part).trim()).filter(Boolean)
+        : [];
+      const parts = folderParts.length > 0
+        ? folderParts
+        : rawName.split(/\s*\/\s*/).map(part => part.trim()).filter(Boolean).slice(0, -1);
+      const leafName = folderParts.length > 0
+        ? rawName
+        : (rawName.split(/\s*\/\s*/).map(part => part.trim()).filter(Boolean).pop() || 'Untitled Request');
+      let node = root;
+      parts.forEach((part) => {
+        if (!node.folders[part]) {
+          node.folders[part] = { folders: {}, requests: [] };
+        }
+        node = node.folders[part];
+      });
+      node.requests.push({ ...req, _displayName: leafName });
+    });
+
+    const countRequests = (node) => {
+      const childCounts = Object.values(node.folders || {}).reduce(
+        (sum, child) => sum + countRequests(child),
+        0
+      );
+      return (node.requests?.length || 0) + childCounts;
+    };
+
+    const toNodes = (node, path = '') => {
+      const folderNodes = Object.keys(node.folders || {})
+        .sort()
+        .map((name) => {
+          const nextPath = path ? `${path} / ${name}` : name;
+          const childNode = node.folders[name];
+          return {
+            type: 'folder',
+            name,
+            path: nextPath,
+            count: countRequests(childNode),
+            children: toNodes(childNode, nextPath)
+          };
+        });
+      const requestNodes = (node.requests || []).map((request) => ({
+        type: 'request',
+        request
+      }));
+      return [...folderNodes, ...requestNodes];
+    };
+
+    return toNodes(root);
+  };
+
+  const handleAddRequestInFolder = (collectionId, folderPath) => {
+    if (!currentOrg?.org_id) return;
+    const newRequest = {
+      request_id: `req_new_${Date.now()}`,
+      collection_id: collectionId || null,
+      org_id: currentOrg.org_id,
+      name: 'Untitled Request',
+      method: 'GET',
+      url: '',
+      headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+      params: [],
+      body: { type: 'none', content: '' },
+      auth: { type: 'none' },
+      folder_path: folderPath || [],
+      created_at: new Date().toISOString()
+    };
+    openRequestInTab(newRequest);
+  };
+
+  const toggleFolder = (path) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const renderRequestNodes = (collection, nodes, depth = 0) => {
+    return nodes.map((node) => {
+      if (node.type === 'folder') {
+        const isOpen = expandedFolders.has(node.path);
+        return (
+          <div key={`folder-${node.path}`}>
+            <div
+              className="w-full px-4 py-2 flex items-center gap-2 text-zinc-400 hover:bg-zinc-800/40 transition-colors group"
+              style={{ paddingLeft: 16 + depth * 12 }}
+            >
+              <button
+                onClick={() => toggleFolder(node.path)}
+                className="flex items-center gap-2 flex-1 min-w-0"
+              >
+                {isOpen ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                )}
+                <Folder className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                <span className="text-sm truncate">{node.name}</span>
+                <span className="text-xs text-zinc-500">{node.count}</span>
+              </button>
+              <button
+                onClick={() => handleAddRequestInFolder(collection?.collection_id, node.path.split(/\s*\/\s*/))}
+                className="opacity-0 group-hover:opacity-100 hover:bg-zinc-700 rounded p-1 transition-opacity"
+                title="Add request"
+              >
+                <Plus className="w-3 h-3 text-zinc-400" />
+              </button>
+            </div>
+            {isOpen && renderRequestNodes(collection, node.children, depth + 1)}
+          </div>
+        );
+      }
+
+      const req = node.request;
+      return (
+        <button
+          key={req.request_id}
+          onClick={() => openRequestInTab(req)}
+          className="w-full px-4 py-2 flex items-center gap-2 hover:bg-zinc-800/50 transition-colors group"
+          style={{ paddingLeft: 16 + depth * 12 }}
+        >
+          <FileText className="w-3.5 h-3.5 text-zinc-600" />
+          <span className={`text-xs font-medium ${getMethodColor(req.method)}`}>
+            {req.method}
+          </span>
+          <span className="flex-1 text-left text-sm text-zinc-400 truncate group-hover:text-zinc-200 transition-colors">
+            {req._displayName || req.name}
+          </span>
+        </button>
+      );
+    });
   };
 
   const handleImportCollection = async (event) => {
@@ -236,12 +436,23 @@ const Sidebar = () => {
         throw new Error('Invalid Postman collection format');
       }
 
+      const flatItems = flattenItemsWithPath(data.item);
+      const folderPaths = Array.from(
+        new Set(
+          flatItems
+            .map(item => (item.folderPath || []).map(part => part.trim()).filter(Boolean))
+            .filter(path => path.length > 0)
+            .map(path => path.join(' / '))
+        )
+      );
+
       const collectionPayload = {
         name: data.info.name || 'Imported Collection',
         description: data.info.description || '',
         color: '#3B82F6',
         pre_request_script: '',
-        post_request_script: ''
+        post_request_script: '',
+        folders: folderPaths
       };
 
       const collectionRes = await axios.post(
@@ -251,7 +462,6 @@ const Sidebar = () => {
       );
 
       const createdCollection = collectionRes.data;
-      const flatItems = flattenItems(data.item);
 
       for (const item of flatItems) {
         const req = item.request || {};
@@ -281,7 +491,8 @@ const Sidebar = () => {
             headers,
             params,
             body: parseRequestBody(req.body),
-            auth: parseAuth(req.auth)
+            auth: parseAuth(req.auth),
+            folder_path: item.folderPath || []
           },
           { withCredentials: true }
         );
@@ -321,6 +532,30 @@ const Sidebar = () => {
       setShowEnvironments(false);
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('last_saved_location');
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved?.collection_id) return;
+      setExpandedCollections(prev => new Set(prev).add(saved.collection_id));
+      if (Array.isArray(saved.folder_path)) {
+        let current = '';
+        setExpandedFolders(prev => {
+          const next = new Set(prev);
+          saved.folder_path.forEach((part) => {
+            current = current ? `${current} / ${part}` : part;
+            next.add(current);
+          });
+          return next;
+        });
+      }
+      localStorage.removeItem('last_saved_location');
+    } catch {
+      // ignore
+    }
+  }, [collections.length, requests.length]);
 
   // Permission checks
   const canEdit = currentOrgRole === 'edit' || currentOrgRole === 'admin';
@@ -558,6 +793,7 @@ const Sidebar = () => {
                     && (!normalizedSearch || (r.name || '').toLowerCase().includes(normalizedSearch))
                 );
                 const isExpanded = expandedCollections.has(collection.collection_id);
+                const requestTree = buildRequestTree(collectionRequests, collection.folders || []);
 
                 return (
                   <div key={collection.collection_id}>
@@ -609,6 +845,13 @@ const Sidebar = () => {
                               <Edit2 className="w-4 h-4 mr-2" />
                               Edit Collection
                             </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleCreateFolder(collection)}
+                            className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100"
+                          >
+                            <Folder className="w-4 h-4 mr-2" />
+                            Create Folder
+                          </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setDeletingCollection(collection)}
                               className="text-red-400 focus:bg-zinc-800 focus:text-red-300"
@@ -623,23 +866,7 @@ const Sidebar = () => {
 
                     {isExpanded && (
                       <div className="ml-4">
-                        {collectionRequests.map(request => (
-                          <button
-                            key={request.request_id}
-                            onClick={() => openRequestInTab(request)}
-                            className="w-full px-4 py-2 flex items-center gap-2 hover:bg-zinc-800/50 transition-colors group"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-zinc-600" />
-                            <span
-                              className={`text-xs font-medium ${getMethodColor(request.method)}`}
-                            >
-                              {request.method}
-                            </span>
-                            <span className="flex-1 text-left text-sm text-zinc-400 truncate group-hover:text-zinc-200 transition-colors">
-                              {request.name}
-                            </span>
-                          </button>
-                        ))}
+                        {renderRequestNodes(collection, requestTree)}
                         {collectionRequests.length === 0 && normalizedSearch && (
                           <div className="px-4 py-2 text-xs text-zinc-500">
                             No matching requests

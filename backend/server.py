@@ -547,6 +547,7 @@ async def create_collection(org_id: str, coll_data: CollectionCreate, request: R
         "color": coll_data.color,
         "pre_request_script": coll_data.pre_request_script,
         "post_request_script": coll_data.post_request_script,
+        "folders": coll_data.folders or [],
         "created_by": user["user_id"],
         "created_at": datetime.now(timezone.utc)
     }
@@ -632,7 +633,7 @@ async def get_org_requests(org_id: str, request: Request):
     requests = await db.requests.find(
         {"org_id": org_id},
         {"_id": 0}
-    ).to_list(1000)
+    ).to_list(length=None)
     
     return requests
 
@@ -673,6 +674,7 @@ async def create_request(req_data: RequestCreate, request: Request):
         "params": [p.dict() for p in req_data.params],
         "body": req_data.body.dict(),
         "auth": req_data.auth.dict(),
+        "folder_path": req_data.folder_path or [],
         "created_by": user["user_id"],
         "created_at": now,
         "updated_at": now
