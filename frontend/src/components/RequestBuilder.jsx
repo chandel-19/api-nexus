@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Trash2, Plus, X, Copy, Folder, Terminal, Globe } from 'lucide-react';
+import { Play, Save, Trash2, Plus, X, Copy, CopyPlus, Folder, Terminal, Globe } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { parseCurl } from '../utils/curlParser';
+import { generateCurl } from '../utils/curlGenerator';
 import { substituteRequestVariables } from '../utils/envSubstitution';
+import AutocompleteInput from './AutocompleteInput';
 import {
   Select,
   SelectContent,
@@ -45,7 +47,41 @@ const RequestBuilder = ({ request }) => {
   const [showCurlDialog, setShowCurlDialog] = useState(false);
   const [curlInput, setCurlInput] = useState('');
   const [selectedCollection, setSelectedCollection] = useState(request?.collection_id || null);
+  const [selectedFolder, setSelectedFolder] = useState(
+    Array.isArray(request?.folder_path) && request.folder_path.length > 0
+      ? request.folder_path.join(' / ')
+      : ''
+  );
   const [saveAsName, setSaveAsName] = useState(request?.name || '');
+
+  useEffect(() => {
+    setSelectedCollection(request?.collection_id || null);
+    setSelectedFolder(
+      Array.isArray(request?.folder_path) && request.folder_path.length > 0
+        ? request.folder_path.join(' / ')
+        : ''
+    );
+  }, [request?.request_id]);
+
+  useEffect(() => {
+    if (!selectedCollection) {
+      setSelectedFolder('');
+      return;
+    }
+    if (request?.collection_id === selectedCollection && Array.isArray(request?.folder_path)) {
+      setSelectedFolder(request.folder_path.join(' / '));
+    } else {
+      setSelectedFolder('');
+    }
+  }, [selectedCollection, request?.collection_id, request?.folder_path]);
+
+  // Reset response when opening a new (unsaved) request tab
+  useEffect(() => {
+    if (request?.request_id?.startsWith('req_new_')) {
+      setResponse(null);
+      setLoading(false);
+    }
+  }, [request?.request_id]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -133,7 +169,17 @@ const RequestBuilder = ({ request }) => {
   const handleSave = async () => {
     // If request is new (starts with req_new_), show collection selector
     if (request.request_id.startsWith('req_new_')) {
-      setShowSaveDialog(true);
+      if (request.collection_id) {
+        await performSave(request.collection_id, request.name);
+      } else {
+        if (request.collection_id) {
+          setSelectedCollection(request.collection_id);
+        }
+        if (Array.isArray(request.folder_path) && request.folder_path.length > 0) {
+          setSelectedFolder(request.folder_path.join(' / '));
+        }
+        setShowSaveDialog(true);
+      }
     } else {
       // Update existing request
       await performSave(request.collection_id, request.name);
@@ -143,23 +189,49 @@ const RequestBuilder = ({ request }) => {
   const handleSaveAs = () => {
     setSaveAsName(request.name + ' (Copy)');
     setSelectedCollection(request.collection_id);
+    setSelectedFolder(
+      Array.isArray(request?.folder_path) && request.folder_path.length > 0
+        ? request.folder_path.join(' / ')
+        : ''
+    );
     setShowSaveAsDialog(true);
   };
 
   const performSave = async (collectionId, requestName) => {
     try {
+      const resolvedCollectionId = collectionId || request.collection_id || null;
+      if (!resolvedCollectionId) {
+        toast({
+          title: 'Select a collection',
+          description: 'Please choose a collection before saving.',
+          variant: 'destructive'
+        });
+        return;
+      }
       const requestData = {
-        collection_id: collectionId,
+        collection_id: resolvedCollectionId,
         name: requestName || request.name,
         method: request.method,
         url: request.url,
         headers: request.headers,
         params: request.params,
         body: request.body,
-        auth: request.auth
+        auth: request.auth,
+        folder_path: selectedFolder
+          ? selectedFolder.split(/\s*\/\s*/).filter(Boolean)
+          : (request.folder_path || [])
       };
 
       await saveRequest({ ...request, ...requestData });
+      if (resolvedCollectionId) {
+        localStorage.setItem(
+          'last_saved_location',
+          JSON.stringify({
+            collection_id: resolvedCollectionId,
+            folder_path: requestData.folder_path || []
+          })
+        );
+      }
       
       toast({
         title: 'Request saved',
@@ -192,7 +264,10 @@ const RequestBuilder = ({ request }) => {
         headers: request.headers,
         params: request.params,
         body: request.body,
-        auth: request.auth
+        auth: request.auth,
+        folder_path: selectedFolder
+          ? selectedFolder.split(/\s*\/\s*/).filter(Boolean)
+          : (request.folder_path || [])
       };
 
       // Create new request (force new ID)
@@ -201,6 +276,15 @@ const RequestBuilder = ({ request }) => {
         newRequestData,
         { withCredentials: true }
       );
+      if (selectedCollection) {
+        localStorage.setItem(
+          'last_saved_location',
+          JSON.stringify({
+            collection_id: selectedCollection,
+            folder_path: newRequestData.folder_path || []
+          })
+        );
+      }
       
       toast({
         title: 'Request saved as new',
@@ -255,6 +339,33 @@ const RequestBuilder = ({ request }) => {
     }
   };
 
+  const handleBeautifyBody = () => {
+    try {
+      const content = request.body?.content || '';
+      if (!content.trim()) {
+        toast({
+          title: 'Nothing to format',
+          description: 'Body is empty',
+          variant: 'destructive'
+        });
+        return;
+      }
+      const parsed = JSON.parse(content);
+      const formatted = JSON.stringify(parsed, null, 2);
+      updateField('body', { ...request.body, content: formatted });
+      toast({
+        title: 'Beautified',
+        description: 'JSON formatted successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Invalid JSON',
+        description: 'Please provide valid JSON to beautify',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const updateField = (field, value) => {
     updateRequest(request.request_id, { [field]: value });
   };
@@ -298,6 +409,26 @@ const RequestBuilder = ({ request }) => {
   const handleImportCurl = () => {
     setCurlInput('');
     setShowCurlDialog(true);
+  };
+
+  const handleCopyCurl = async () => {
+    try {
+      const requestToCopy = currentEnv && currentEnv.variables?.length
+        ? substituteRequestVariables(request, currentEnv)
+        : request;
+      const curlCommand = generateCurl(requestToCopy);
+      await navigator.clipboard.writeText(curlCommand);
+      toast({
+        title: 'cURL copied',
+        description: 'The cURL command has been copied to your clipboard',
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to copy cURL',
+        description: error.message || 'Unable to generate cURL',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleParseCurl = async (executeImmediately = false) => {
@@ -399,7 +530,8 @@ const RequestBuilder = ({ request }) => {
       <div className="flex flex-col h-full bg-zinc-950">
         {/* Request Header */}
         <div className="p-4 border-b border-zinc-800 space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap flex-1 min-w-0">
             <Select
               value={request.method}
               onValueChange={(value) => updateField('method', value)}
@@ -418,61 +550,69 @@ const RequestBuilder = ({ request }) => {
               </SelectContent>
             </Select>
 
-            <input
-              type="text"
+              <AutocompleteInput
+                type="input"
               value={request.url}
               onChange={(e) => updateField('url', e.target.value)}
-              placeholder="Enter request URL (use {{variable}} for env vars)"
-              className="flex-1 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
+                placeholder="Enter request URL (use {{variable}} for env vars)"
+                currentEnv={currentEnv}
+                className="flex-1 min-w-0 w-full md:min-w-[420px] lg:min-w-[520px] xl:min-w-[680px] px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
 
-            <Select
-              value={currentEnv?.env_id || 'none'}
-              onValueChange={(value) => {
-                if (value === 'none') {
-                  setCurrentEnv(null);
-                } else {
-                  const env = environments.find(e => e.env_id === value);
-                  if (env) setCurrentEnv(env);
-                }
-              }}
-            >
-              <SelectTrigger className={`w-48 bg-zinc-900 border-zinc-800 text-zinc-100 ${currentEnv ? 'border-blue-500/50' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <Globe className={`w-4 h-4 ${currentEnv ? 'text-blue-400' : 'text-zinc-500'}`} />
-                  <SelectValue placeholder={environments.length === 0 ? "No Environments" : "No Environment"} />
+              <Select
+                value={currentEnv?.env_id || 'none'}
+                onValueChange={(value) => {
+                  if (value === 'none') {
+                    setCurrentEnv(null);
+                  } else {
+                    const env = environments.find(e => e.env_id === value);
+                    if (env) setCurrentEnv(env);
+                  }
+                }}
+              >
+              <SelectTrigger className={`flex-shrink-0 w-auto min-w-[120px] max-w-[160px] bg-zinc-900 border-zinc-800 text-zinc-100 ${currentEnv ? 'border-blue-500/50' : ''}`}>
+                <div className="min-w-0 w-full">
+                  {currentEnv ? (
+                    <span className="text-sm font-medium text-zinc-100 truncate">
+                      {currentEnv.name}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-zinc-500 truncate">
+                      {environments.length === 0 ? "No Environments" : "No Environment"}
+                    </span>
+                  )}
                 </div>
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800">
-                <SelectItem value="none" className="text-zinc-400">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    No Environment
-                  </div>
-                </SelectItem>
-                {environments.length === 0 ? (
-                  <div className="px-2 py-4 text-xs text-zinc-500 text-center">
-                    Create an environment first
-                  </div>
-                ) : (
-                  environments.map(env => (
-                    <SelectItem key={env.env_id} value={env.env_id}>
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4" />
-                        {env.name}
-                        <span className="text-xs text-zinc-500 ml-1">
-                          ({env.variables?.length || 0} vars)
-                        </span>
-                        {currentEnv?.env_id === env.env_id && (
-                          <span className="text-xs text-blue-400 ml-1">• Active</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-800">
+                  <SelectItem value="none" className="text-zinc-400">
+                    <div className="flex items-center gap-2">
+                      No Environment
+                    </div>
+                  </SelectItem>
+                  {environments.length === 0 ? (
+                    <div className="px-2 py-4 text-xs text-zinc-500 text-center">
+                      Create an environment first
+                    </div>
+                  ) : (
+                    environments.map(env => (
+                      <SelectItem key={env.env_id} value={env.env_id}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{env.name}</span>
+                          <span className="text-xs text-zinc-500">
+                            ({env.variables?.length || 0} vars)
+                          </span>
+                          {currentEnv?.env_id === env.env_id && (
+                            <span className="text-xs text-blue-400">• Active</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
+            <div className="flex items-center gap-2 justify-end flex-wrap lg:flex-nowrap sm:ml-auto flex-shrink-0">
             <Button
               onClick={handleSendRequest}
               disabled={loading || !request.url}
@@ -501,7 +641,7 @@ const RequestBuilder = ({ request }) => {
               className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
               title="Save As"
             >
-              <Copy className="w-4 h-4" />
+              <CopyPlus className="w-4 h-4" />
             </Button>
 
             <Button
@@ -511,6 +651,15 @@ const RequestBuilder = ({ request }) => {
               title="Import from cURL"
             >
               <Terminal className="w-4 h-4" />
+            </Button>
+
+            <Button
+              onClick={handleCopyCurl}
+              variant="ghost"
+              className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+              title="Copy as cURL"
+            >
+              <Copy className="w-4 h-4" />
             </Button>
 
             {!request.request_id.startsWith('req_new_') && (
@@ -523,6 +672,7 @@ const RequestBuilder = ({ request }) => {
                 <Trash2 className="w-4 h-4" />
               </Button>
             )}
+            </div>
           </div>
 
           <input
@@ -539,28 +689,28 @@ const RequestBuilder = ({ request }) => {
           {/* Left: Request Config */}
           <div className="w-1/2 border-r border-zinc-800 overflow-y-auto">
             <Tabs defaultValue="params" className="w-full">
-              <TabsList className="w-full justify-start border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-0">
+              <TabsList className="w-full justify-start flex-nowrap gap-2 border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-2 overflow-x-auto">
                 <TabsTrigger
                   value="params"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Params
                 </TabsTrigger>
                 <TabsTrigger
                   value="auth"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Auth
                 </TabsTrigger>
                 <TabsTrigger
                   value="headers"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Headers
                 </TabsTrigger>
                 <TabsTrigger
                   value="body"
-                  className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                  className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                 >
                   Body
                 </TabsTrigger>
@@ -568,7 +718,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="params" className="p-4 space-y-2">
                 {request.params.map((param, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex items-center gap-2 w-full flex-nowrap">
                     <input
                       type="checkbox"
                       checked={param.enabled}
@@ -580,14 +730,15 @@ const RequestBuilder = ({ request }) => {
                       value={param.key}
                       onChange={(e) => updateParam(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
-                    <input
-                      type="text"
+                    <AutocompleteInput
+                      type="input"
                       value={param.value}
                       onChange={(e) => updateParam(index, 'value', e.target.value)}
                       placeholder="Value"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      currentEnv={currentEnv}
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeParam(index)}
@@ -633,39 +784,39 @@ const RequestBuilder = ({ request }) => {
                 )}
 
                 {request.auth?.type === 'apikey' && (
-                  <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-nowrap">
                     <input
                       type="text"
                       value={request.auth?.key || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, key: e.target.value })}
                       placeholder="Key"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <input
                       type="text"
                       value={request.auth?.value || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, value: e.target.value })}
                       placeholder="Value"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 )}
 
                 {request.auth?.type === 'basic' && (
-                  <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-nowrap">
                     <input
                       type="text"
                       value={request.auth?.username || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, username: e.target.value })}
                       placeholder="Username"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <input
                       type="password"
                       value={request.auth?.password || ''}
                       onChange={(e) => updateField('auth', { ...request.auth, password: e.target.value })}
                       placeholder="Password"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 )}
@@ -673,7 +824,7 @@ const RequestBuilder = ({ request }) => {
 
               <TabsContent value="headers" className="p-4 space-y-2">
                 {request.headers.map((header, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex items-center gap-2 w-full flex-nowrap">
                     <input
                       type="checkbox"
                       checked={header.enabled}
@@ -685,14 +836,15 @@ const RequestBuilder = ({ request }) => {
                       value={header.key}
                       onChange={(e) => updateHeader(index, 'key', e.target.value)}
                       placeholder="Key"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-[45%] min-w-[180px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
-                    <input
-                      type="text"
+                    <AutocompleteInput
+                      type="input"
                       value={header.value}
                       onChange={(e) => updateHeader(index, 'value', e.target.value)}
                       placeholder="Value"
-                      className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      currentEnv={currentEnv}
+                      className="w-[90%] min-w-[320px] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <button
                       onClick={() => removeHeader(index)}
@@ -728,12 +880,27 @@ const RequestBuilder = ({ request }) => {
                 </Select>
 
                 {request.body?.type !== 'none' && (
-                  <textarea
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleBeautifyBody}
+                        className="text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800"
+                      >
+                        Beautify
+                      </Button>
+                    </div>
+                    <AutocompleteInput
+                      type="textarea"
                     value={request.body?.content || ''}
                     onChange={(e) => updateField('body', { ...request.body, content: e.target.value })}
-                    placeholder={request.body?.type === 'json' ? '{\n  "key": "value"\n}' : 'Enter body content'}
-                    className="w-full h-64 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                      placeholder={request.body?.type === 'json' ? '{\n  \"key\": \"value\"\n}' : 'Enter body content'}
+                      currentEnv={currentEnv}
+                      className="w-full h-[28rem] px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-zinc-100 placeholder-zinc-600 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                   />
+                  </div>
                 )}
               </TabsContent>
             </Tabs>
@@ -761,16 +928,16 @@ const RequestBuilder = ({ request }) => {
                 </div>
 
                 <Tabs defaultValue="body" className="flex-1">
-                  <TabsList className="w-full justify-start border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-0">
+                  <TabsList className="w-full justify-start flex-nowrap gap-2 border-b border-zinc-800 bg-zinc-900 rounded-none h-auto p-2 overflow-x-auto">
                     <TabsTrigger
                       value="body"
-                      className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                     >
                       Body
                     </TabsTrigger>
                     <TabsTrigger
                       value="headers"
-                      className="rounded-none data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 text-zinc-500"
+                      className="rounded-md px-3 py-1 data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 text-zinc-500 whitespace-nowrap"
                     >
                       Headers
                     </TabsTrigger>
@@ -843,6 +1010,30 @@ const RequestBuilder = ({ request }) => {
               </Select>
             </div>
 
+            {selectedCollection && (
+              <div>
+                <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                  Folder (optional)
+                </label>
+                <Select
+                  value={selectedFolder || '__none__'}
+                  onValueChange={(value) => setSelectedFolder(value === '__none__' ? '' : value)}
+                >
+                  <SelectTrigger className="w-full bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="No folder" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                    <SelectItem value="__none__">No folder</SelectItem>
+                    {(collections.find(c => c.collection_id === selectedCollection)?.folders || []).map(folder => (
+                      <SelectItem key={folder} value={folder}>
+                        {folder}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button
                 onClick={() => performSave(selectedCollection, request.name)}
@@ -912,13 +1103,37 @@ const RequestBuilder = ({ request }) => {
               </Select>
             </div>
 
+            {selectedCollection && (
+              <div>
+                <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                  Folder (optional)
+                </label>
+                <Select
+                  value={selectedFolder || '__none__'}
+                  onValueChange={(value) => setSelectedFolder(value === '__none__' ? '' : value)}
+                >
+                  <SelectTrigger className="w-full bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="No folder" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-800">
+                    <SelectItem value="__none__">No folder</SelectItem>
+                    {(collections.find(c => c.collection_id === selectedCollection)?.folders || []).map(folder => (
+                      <SelectItem key={folder} value={folder}>
+                        {folder}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button
                 onClick={performSaveAs}
                 disabled={!selectedCollection || !saveAsName}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
-                <Copy className="w-4 h-4 mr-2" />
+                <CopyPlus className="w-4 h-4 mr-2" />
                 Save As New
               </Button>
               <Button

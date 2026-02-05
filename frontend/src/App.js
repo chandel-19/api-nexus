@@ -7,7 +7,6 @@ import Sidebar from "./components/Sidebar";
 import TabBar from "./components/TabBar";
 import CommandPalette from "./components/CommandPalette";
 import Login from "./pages/Login";
-import AuthCallback from "./pages/AuthCallback";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const Dashboard = () => {
@@ -26,16 +25,43 @@ const Dashboard = () => {
 function AppRouter() {
   const location = useLocation();
   
-  // Check URL fragment (not query params) for session_id
-  if (location.hash?.includes('session_id=')) {
-    return <AuthCallback />;
-  }
-  
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route
         path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/collections"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/environments"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations"
         element={
           <ProtectedRoute>
             <Dashboard />

@@ -17,11 +17,11 @@ from models import (
     User, Organization, OrganizationCreate, OrganizationUpdate, AddMember, UpdateMemberRole,
     Collection, CollectionCreate, CollectionUpdate,
     Request as RequestModel, RequestCreate, RequestUpdate, RequestExecute,
-    History, Environment, EnvironmentCreate, EnvironmentUpdate,
-    SessionExchange, KeyValue
+    History, Environment, EnvironmentCreate, EnvironmentUpdate, SsoAllowlistUpdate,
+    SessionExchange, GoogleAuth, KeyValue
 )
 from auth import (
-    exchange_session_id, create_or_update_user, create_session,
+    exchange_session_id, verify_google_id_token, create_or_update_user, create_session,
     get_current_user, delete_session
 )
 from permissions import (
@@ -56,15 +56,71 @@ logger = logging.getLogger(__name__)
 
 # ============= Authentication Endpoints =============
 
+async def get_allowlisted_orgs_or_raise(email: str):
+    """Return allowlisted orgs or raise if SSO allowlist blocks this email."""
+    allowlist_count = await db.org_sso_allowlists.count_documents({"emails": {"$exists": True, "$ne": []}})
+    if allowlist_count == 0:
+        return []
+
+    allowed_orgs = await db.org_sso_allowlists.find(
+        {"emails": email},
+        {"_id": 0, "org_id": 1}
+    ).to_list(length=None)
+
+    if allowed_orgs:
+        return allowed_orgs
+
+    # Allow org owners/admins to avoid lockout
+    existing_user = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+    if existing_user:
+        allowlisted_org_ids = await db.org_sso_allowlists.distinct("org_id")
+        admin_org = await db.organizations.find_one(
+            {
+                "org_id": {"$in": allowlisted_org_ids},
+                "$or": [
+                    {"owner_id": existing_user["user_id"]},
+                    {"member_roles": {"$elemMatch": {"user_id": existing_user["user_id"], "role": "admin"}}}
+                ]
+            },
+            {"_id": 0, "org_id": 1}
+        )
+        if admin_org:
+            return []
+
+    raise HTTPException(status_code=403, detail="Email not allowed for SSO login")
+
 @api_router.post("/auth/session")
 async def auth_session(session_data: SessionExchange):
     """Exchange session_id for user data and create session"""
     try:
         # Exchange session_id with Emergent
         user_data = await exchange_session_id(session_data.session_id)
-        
+        email = (user_data.get("email") or "").strip().lower()
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in auth response")
+
+        allowed_orgs = await get_allowlisted_orgs_or_raise(email)
+
         # Create or update user
         user = await create_or_update_user(db, user_data)
+
+        # Auto-join user to allowlisted orgs (view role) if needed
+        for entry in allowed_orgs:
+            org_id = entry.get("org_id")
+            if not org_id:
+                continue
+            org = await db.organizations.find_one(
+                {"org_id": org_id},
+                {"_id": 0, "members": 1}
+            )
+            if not org:
+                continue
+            if user["user_id"] in (org.get("members") or []):
+                continue
+            try:
+                await add_user_to_org(db, org_id, user["user_id"], role="view")
+            except HTTPException:
+                pass
         
         # Create session
         session_token = user_data.get("session_token")
@@ -80,18 +136,84 @@ async def auth_session(session_data: SessionExchange):
         
         # Return user data
         response = JSONResponse(content=user_response)
+        cookie_secure = os.environ.get("COOKIE_SECURE", "").lower() in ["1", "true", "yes"]
+        cookie_samesite = "none" if cookie_secure else "lax"
         response.set_cookie(
             key="session_token",
             value=session_token,
             httponly=True,
-            secure=True,
-            samesite="none",
+            secure=cookie_secure,
+            samesite=cookie_samesite,
             max_age=7 * 24 * 60 * 60,  # 7 days
             path="/"
         )
         return response
     except Exception as e:
         logger.error(f"Session exchange error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/auth/google")
+async def auth_google(payload: GoogleAuth):
+    """Authenticate with Google ID token and create session"""
+    try:
+        google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+        token_info = await verify_google_id_token(payload.id_token, google_client_id)
+        email = (token_info.get("email") or "").strip().lower()
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in Google response")
+
+        allowed_orgs = await get_allowlisted_orgs_or_raise(email)
+
+        user = await create_or_update_user(db, {
+            "email": email,
+            "name": token_info.get("name") or token_info.get("given_name") or email.split("@")[0],
+            "picture": token_info.get("picture")
+        })
+
+        # Auto-join user to allowlisted orgs (view role) if needed
+        for entry in allowed_orgs:
+            org_id = entry.get("org_id")
+            if not org_id:
+                continue
+            org = await db.organizations.find_one(
+                {"org_id": org_id},
+                {"_id": 0, "members": 1}
+            )
+            if not org:
+                continue
+            if user["user_id"] in (org.get("members") or []):
+                continue
+            try:
+                await add_user_to_org(db, org_id, user["user_id"], role="view")
+            except HTTPException:
+                pass
+
+        session_token = f"session_{uuid.uuid4().hex}"
+        await create_session(db, user["user_id"], session_token)
+
+        user_response = {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user.get("picture")
+        }
+
+        response = JSONResponse(content=user_response)
+        cookie_secure = os.environ.get("COOKIE_SECURE", "").lower() in ["1", "true", "yes"]
+        cookie_samesite = "none" if cookie_secure else "lax"
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=cookie_secure,
+            samesite=cookie_samesite,
+            max_age=7 * 24 * 60 * 60,
+            path="/"
+        )
+        return response
+    except Exception as e:
+        logger.error(f"Google auth error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -223,15 +345,44 @@ async def add_member(org_id: str, member_data: AddMember, request: Request):
     # Check admin permission
     await check_org_permission(db, user["user_id"], org_id, "admin")
     
-    # Find user by email
-    member = await db.users.find_one({"email": member_data.email}, {"_id": 0})
+    # Normalize email
+    email = (member_data.email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    # Ensure email is in SSO allowlist for this org
+    await db.org_sso_allowlists.update_one(
+        {"org_id": org_id},
+        {"$addToSet": {"emails": email},
+         "$set": {
+             "org_id": org_id,
+             "updated_by": user["user_id"],
+             "updated_at": datetime.now(timezone.utc)
+         }},
+        upsert=True
+    )
+
+    # Find or create user by email (invite flow)
+    member = await db.users.find_one({"email": email}, {"_id": 0})
     if not member:
-        raise HTTPException(status_code=404, detail="User not found. They must sign in at least once.")
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        member = {
+            "user_id": user_id,
+            "email": email,
+            "name": email.split("@")[0],
+            "created_at": datetime.now(timezone.utc),
+            "invited": True
+        }
+        await db.users.insert_one(member)
     
     # Add to organization with specified role
-    await add_user_to_org(db, org_id, member["user_id"], member_data.role)
+    try:
+        await add_user_to_org(db, org_id, member["user_id"], member_data.role)
+    except HTTPException as e:
+        if e.status_code != 400:
+            raise
     
-    return {"message": "Member added successfully", "role": member_data.role}
+    return {"message": "Member added successfully", "role": member_data.role, "email": email}
 
 
 @api_router.delete("/organizations/{org_id}/members/{member_user_id}")
@@ -264,6 +415,57 @@ async def update_member_role(org_id: str, member_user_id: str, role_data: Update
     await update_user_role_in_org(db, org_id, member_user_id, role_data.role)
     
     return {"message": "Member role updated successfully", "new_role": role_data.role}
+
+
+@api_router.get("/organizations/{org_id}/sso-allowlist")
+async def get_sso_allowlist(org_id: str, request: Request):
+    """Get SSO allowlist emails for organization (Admin only)"""
+    user = await get_current_user(request)
+    await check_org_permission(db, user["user_id"], org_id, "admin")
+
+    record = await db.org_sso_allowlists.find_one({"org_id": org_id}, {"_id": 0})
+    return {"emails": record.get("emails", []) if record else []}
+
+
+@api_router.put("/organizations/{org_id}/sso-allowlist")
+async def update_sso_allowlist(org_id: str, payload: SsoAllowlistUpdate, request: Request):
+    """Update SSO allowlist emails for organization (Admin only)"""
+    user = await get_current_user(request)
+    await check_org_permission(db, user["user_id"], org_id, "admin")
+
+    cleaned_emails = sorted({
+        email.strip().lower()
+        for email in (payload.emails or [])
+        if email and email.strip()
+    })
+
+    await db.org_sso_allowlists.update_one(
+        {"org_id": org_id},
+        {"$set": {
+            "org_id": org_id,
+            "emails": cleaned_emails,
+            "updated_by": user["user_id"],
+            "updated_at": datetime.now(timezone.utc)
+        }},
+        upsert=True
+    )
+
+    # Auto-add allowlisted users (if they already exist) as view members
+    if cleaned_emails:
+        org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0, "members": 1, "member_roles": 1})
+        existing_member_ids = set(org.get("members") or [])
+        for email in cleaned_emails:
+            member = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+            if not member:
+                continue
+            user_id = member["user_id"]
+            if user_id in existing_member_ids:
+                continue
+            try:
+                await add_user_to_org(db, org_id, user_id, role="view")
+            except HTTPException:
+                pass
+    return {"emails": cleaned_emails}
 
 
 @api_router.get("/organizations/{org_id}/members")
@@ -345,6 +547,7 @@ async def create_collection(org_id: str, coll_data: CollectionCreate, request: R
         "color": coll_data.color,
         "pre_request_script": coll_data.pre_request_script,
         "post_request_script": coll_data.post_request_script,
+        "folders": coll_data.folders or [],
         "created_by": user["user_id"],
         "created_at": datetime.now(timezone.utc)
     }
@@ -430,7 +633,7 @@ async def get_org_requests(org_id: str, request: Request):
     requests = await db.requests.find(
         {"org_id": org_id},
         {"_id": 0}
-    ).to_list(1000)
+    ).to_list(length=None)
     
     return requests
 
@@ -471,6 +674,7 @@ async def create_request(req_data: RequestCreate, request: Request):
         "params": [p.dict() for p in req_data.params],
         "body": req_data.body.dict(),
         "auth": req_data.auth.dict(),
+        "folder_path": req_data.folder_path or [],
         "created_by": user["user_id"],
         "created_at": now,
         "updated_at": now
@@ -758,10 +962,12 @@ async def delete_environment(env_id: str, request: Request):
 # Include the router in the main app
 app.include_router(api_router)
 
+frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],
+    allow_origins=[frontend_url],
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -45,6 +45,10 @@ class UpdateMemberRole(BaseModel):
     role: str  # "admin", "edit", or "view"
 
 
+class SsoAllowlistUpdate(BaseModel):
+    emails: List[str] = []
+
+
 # Collection Models
 class Collection(BaseModel):
     collection_id: str
@@ -56,6 +60,7 @@ class Collection(BaseModel):
     created_at: datetime
     pre_request_script: Optional[str] = None
     post_request_script: Optional[str] = None
+    folders: Optional[List[str]] = []
 
 
 class CollectionCreate(BaseModel):
@@ -64,6 +69,7 @@ class CollectionCreate(BaseModel):
     color: str = "#3B82F6"
     pre_request_script: Optional[str] = None
     post_request_script: Optional[str] = None
+    folders: Optional[List[str]] = []
 
 
 class CollectionUpdate(BaseModel):
@@ -72,6 +78,7 @@ class CollectionUpdate(BaseModel):
     color: Optional[str] = None
     pre_request_script: Optional[str] = None
     post_request_script: Optional[str] = None
+    folders: Optional[List[str]] = None
 
 
 # Request Models
@@ -106,6 +113,7 @@ class Request(BaseModel):
     params: List[KeyValue] = []
     body: RequestBody
     auth: RequestAuth
+    folder_path: Optional[List[str]] = []
     created_by: str
     created_at: datetime
     updated_at: datetime
@@ -120,6 +128,7 @@ class RequestCreate(BaseModel):
     params: List[KeyValue] = []
     body: RequestBody = RequestBody(type="none", content="")
     auth: RequestAuth = RequestAuth(type="none")
+    folder_path: Optional[List[str]] = []
 
 
 class RequestUpdate(BaseModel):
@@ -131,6 +140,7 @@ class RequestUpdate(BaseModel):
     params: Optional[List[KeyValue]] = None
     body: Optional[RequestBody] = None
     auth: Optional[RequestAuth] = None
+    folder_path: Optional[List[str]] = None
 
 
 class RequestExecute(BaseModel):
@@ -190,3 +200,7 @@ class CollectionScripts(BaseModel):
 # Auth Models
 class SessionExchange(BaseModel):
     session_id: str
+
+
+class GoogleAuth(BaseModel):
+    id_token: str

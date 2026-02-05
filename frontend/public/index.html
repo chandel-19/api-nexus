@@ -2,6 +2,11 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.ico?v=4" sizes="any" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.png?v=4" type="image/png" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.svg?v=4" type="image/svg+xml" />
+        <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico?v=4" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.png?v=4" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
         <meta name="description" content="API Nexus - Your powerful API testing companion" />
@@ -19,46 +24,6 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>API Nexus - API Testing Tool</title>
-        <style>
-            /* Hide Emergent badge if it gets injected */
-            #emergent-badge,
-            a[href*="emergent.sh"],
-            a[href*="emergentagent.com"][id*="badge"],
-            a[href*="emergent"][id*="badge"] {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-        </style>
-        <script>
-            // Remove Emergent badge if it gets injected
-            (function() {
-                function removeBadge() {
-                    var badge = document.getElementById('emergent-badge');
-                    if (badge) {
-                        badge.remove();
-                    }
-                    // Also check for any links with emergent in href
-                    var links = document.querySelectorAll('a[href*="emergent"]');
-                    links.forEach(function(link) {
-                        if (link.id && link.id.includes('badge')) {
-                            link.remove();
-                        }
-                    });
-                }
-                // Run immediately
-                removeBadge();
-                // Run after DOM is ready
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', removeBadge);
-                }
-                // Run after page load
-                window.addEventListener('load', removeBadge);
-                // Run periodically to catch dynamically injected badges
-                setInterval(removeBadge, 1000);
-            })();
-        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

@@ -37,6 +37,10 @@ const OrganizationManager = ({ onClose }) => {
   const [memberRole, setMemberRole] = useState('edit');
   const [deletingOrg, setDeletingOrg] = useState(null);
   const [removingMember, setRemovingMember] = useState(null);
+  const [ssoAllowlist, setSsoAllowlist] = useState([]);
+  const [ssoEmail, setSsoEmail] = useState('');
+  const [loadingAllowlist, setLoadingAllowlist] = useState(false);
+  const [savingAllowlist, setSavingAllowlist] = useState(false);
 
   const isAdmin = currentOrgRole === 'admin';
 
@@ -44,8 +48,11 @@ const OrganizationManager = ({ onClose }) => {
   useEffect(() => {
     if (selectedOrg) {
       loadOrgMembers(selectedOrg.org_id);
+      if (isAdmin) {
+        loadSsoAllowlist(selectedOrg.org_id);
+      }
     }
-  }, [selectedOrg]);
+  }, [selectedOrg, isAdmin]);
 
   const loadOrgMembers = async (orgId) => {
     setLoadingMembers(true);
@@ -60,6 +67,67 @@ const OrganizationManager = ({ onClose }) => {
     } finally {
       setLoadingMembers(false);
     }
+  };
+
+  const loadSsoAllowlist = async (orgId) => {
+    setLoadingAllowlist(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/api/organizations/${orgId}/sso-allowlist`,
+        { withCredentials: true }
+      );
+      setSsoAllowlist(response.data.emails || []);
+    } catch (error) {
+      console.error('Failed to load SSO allowlist:', error);
+    } finally {
+      setLoadingAllowlist(false);
+    }
+  };
+
+  const saveSsoAllowlist = async (orgId, emails) => {
+    setSavingAllowlist(true);
+    try {
+      const response = await axios.put(
+        `${BACKEND_URL}/api/organizations/${orgId}/sso-allowlist`,
+        { emails },
+        { withCredentials: true }
+      );
+      setSsoAllowlist(response.data.emails || []);
+      loadOrgMembers(orgId);
+      toast({
+        title: 'SSO allowlist updated',
+        description: `${response.data.emails?.length || 0} email(s) allowed`
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to update allowlist',
+        description: error.response?.data?.detail || error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingAllowlist(false);
+    }
+  };
+
+  const handleAddSsoEmail = async () => {
+    const email = ssoEmail.trim().toLowerCase();
+    if (!email || !selectedOrg) return;
+    if (!email.includes('@')) {
+      toast({ title: 'Invalid email', description: 'Enter a valid email address', variant: 'destructive' });
+      return;
+    }
+    if (ssoAllowlist.includes(email)) {
+      toast({ title: 'Already added', description: `${email} is already in the allowlist` });
+      return;
+    }
+    await saveSsoAllowlist(selectedOrg.org_id, [...ssoAllowlist, email]);
+    setSsoEmail('');
+  };
+
+  const handleRemoveSsoEmail = async (email) => {
+    if (!selectedOrg) return;
+    const updated = ssoAllowlist.filter(e => e !== email);
+    await saveSsoAllowlist(selectedOrg.org_id, updated);
   };
 
   const handleCreateOrganization = async () => {
@@ -104,6 +172,9 @@ const OrganizationManager = ({ onClose }) => {
       setMemberEmail('');
       setMemberRole('edit');
       loadOrgMembers(selectedOrg.org_id);
+      if (isAdmin) {
+        loadSsoAllowlist(selectedOrg.org_id);
+      }
     } catch (error) {
       toast({
         title: 'Failed to add member',
@@ -470,6 +541,59 @@ const OrganizationManager = ({ onClose }) => {
                     <Mail className="w-3.5 h-3.5 mr-1" />
                     Invite Member
                   </Button>
+                )}
+              </div>
+            )}
+
+            {/* SSO Allowlist (Admin Only) */}
+            {isAdmin && (
+              <div className="mb-6 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-sm font-medium text-zinc-100">SSO Allowlist</h4>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Only these emails can sign in via Google when any allowlist is configured.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mb-3">
+                  <Input
+                    placeholder="Add allowed email"
+                    type="email"
+                    value={ssoEmail}
+                    onChange={(e) => setSsoEmail(e.target.value)}
+                    className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                  />
+                  <Button
+                    onClick={handleAddSsoEmail}
+                    disabled={!ssoEmail || savingAllowlist}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                {loadingAllowlist ? (
+                  <div className="text-xs text-zinc-500">Loading allowlist...</div>
+                ) : ssoAllowlist.length === 0 ? (
+                  <div className="text-xs text-zinc-500">No emails added yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {ssoAllowlist.map(email => (
+                      <div key={email} className="flex items-center justify-between px-3 py-2 bg-zinc-900 rounded border border-zinc-700">
+                        <span className="text-xs text-zinc-300">{email}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveSsoEmail(email)}
+                          className="text-red-400 hover:text-red-300 hover:bg-zinc-700"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

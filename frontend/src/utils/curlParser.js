@@ -21,90 +21,108 @@ export function parseCurl(curlCommand) {
     auth: { type: 'none' }
   };
 
-  // Extract URL (first quoted string or first URL-like string after curl)
-  const urlMatch = command.match(/curl\s+(?:['"]?)(https?:\/\/[^\s'"]+)(?:['"]?)/i) ||
-                   command.match(/curl\s+['"]([^'"]+)['"]/) ||
-                   command.match(/curl\s+([^\s]+)/);
-  
-  if (urlMatch) {
-    result.url = urlMatch[1] || urlMatch[2] || urlMatch[3];
-  }
+  // Tokenize command (handles simple quoted strings)
+  const tokens = command.match(/"[^"]*"|'[^']*'|[^\s]+/g) || [];
+  const cleanedTokens = tokens.map(t => t.replace(/^['"]|['"]$/g, ''));
 
-  // Extract method (-X or --request)
-  const methodMatch = command.match(/-X\s+(\w+)|--request\s+(\w+)/i);
-  if (methodMatch) {
-    result.method = (methodMatch[1] || methodMatch[2]).toUpperCase();
-  }
+  // Parse tokens for method/headers/body/url/auth
+  const dataTokens = [];
+  const formTokens = [];
+  let skipNext = false;
+  let pendingFlag = null;
 
-  // Extract headers (-H or --header)
-  const headerRegex = /-H\s+['"]([^'"]+)['"]|--header\s+['"]([^'"]+)['"]|--header\s+([^\s]+)/gi;
-  let headerMatch;
-  while ((headerMatch = headerRegex.exec(command)) !== null) {
-    const headerValue = headerMatch[1] || headerMatch[2] || headerMatch[3];
-    if (headerValue) {
-      const colonIndex = headerValue.indexOf(':');
+  const takeNextValue = (flag, value) => {
+    if (!value) return;
+    if (flag === '-X' || flag === '--request') {
+      result.method = value.toUpperCase();
+    } else if (flag === '-H' || flag === '--header') {
+      const colonIndex = value.indexOf(':');
       if (colonIndex > 0) {
-        const key = headerValue.substring(0, colonIndex).trim();
-        const value = headerValue.substring(colonIndex + 1).trim();
-        result.headers.push({ key, value, enabled: true });
+        const key = value.substring(0, colonIndex).trim();
+        const val = value.substring(colonIndex + 1).trim();
+        result.headers.push({ key, value: val, enabled: true });
+      }
+    } else if (
+      flag === '-d' || flag === '--data' || flag === '--data-raw' ||
+      flag === '--data-binary' || flag === '--data-urlencode'
+    ) {
+      dataTokens.push(value);
+    } else if (flag === '-F' || flag === '--form') {
+      formTokens.push(value);
+    } else if (flag === '-u' || flag === '--user') {
+      const [username, password] = value.split(':');
+      result.auth = {
+        type: 'basic',
+        username: username || '',
+        password: password || ''
+      };
+    }
+  };
+
+  for (let i = 0; i < cleanedTokens.length; i++) {
+    const token = cleanedTokens[i];
+    if (i === 0 && token.toLowerCase() === 'curl') {
+      continue;
+    }
+    if (pendingFlag) {
+      takeNextValue(pendingFlag, token);
+      pendingFlag = null;
+      continue;
+    }
+    if (token.startsWith('-')) {
+      // Flags that take a value
+      if ([
+        '-X', '--request', '-H', '--header', '-d', '--data', '--data-raw',
+        '--data-binary', '--data-urlencode', '-F', '--form', '-u', '--user'
+      ].includes(token)) {
+        pendingFlag = token;
+        continue;
+      }
+      continue;
+    }
+    // First non-flag token is the URL
+    if (!result.url) {
+      result.url = token;
+    }
+  }
+
+  // Build body from data/form tokens
+  if (formTokens.length > 0) {
+    result.body = { type: 'form', content: formTokens.join('&') };
+  } else if (dataTokens.length > 0) {
+    const data = dataTokens.join('&');
+    try {
+      JSON.parse(data);
+      result.body = { type: 'json', content: data };
+    } catch {
+      if (data.includes('=') && !data.includes('{')) {
+        result.body = { type: 'form', content: data };
+      } else {
+        result.body = { type: 'raw', content: data };
       }
     }
-  }
-
-  // Extract data/body (-d or --data or --data-raw or --data-binary)
-  const dataMatch = command.match(/-d\s+['"]([^'"]+)['"]|--data\s+['"]([^'"]+)['"]|--data-raw\s+['"]([^'"]+)['"]|--data-binary\s+['"]([^'"]+)['"]/i);
-  if (dataMatch) {
-    const data = dataMatch[1] || dataMatch[2] || dataMatch[3] || dataMatch[4];
-    if (data) {
-      // Try to parse as JSON
-      try {
-        JSON.parse(data);
-        result.body = { type: 'json', content: data };
-      } catch {
-        // Check if it's form data (key=value format)
-        if (data.includes('=') && !data.includes('{')) {
-          result.body = { type: 'form', content: data };
-        } else {
-          result.body = { type: 'raw', content: data };
-        }
-      }
+    // If body present and method not set, default to POST
+    if (result.method === 'GET') {
+      result.method = 'POST';
     }
   }
 
-  // Extract form data (-F or --form)
-  const formRegex = /-F\s+['"]([^'"]+)['"]|--form\s+['"]([^'"]+)['"]/gi;
-  let formMatch;
-  const formData = [];
-  while ((formMatch = formRegex.exec(command)) !== null) {
-    const formValue = formMatch[1] || formMatch[2];
-    if (formValue) {
-      formData.push(formValue);
-    }
-  }
-  if (formData.length > 0) {
-    result.body = { type: 'form', content: formData.join('&') };
-  }
-
-  // Extract query parameters from URL
+  // Extract query parameters from URL (only if URL is valid and does not contain variables)
   if (result.url) {
-    const urlObj = new URL(result.url);
-    urlObj.searchParams.forEach((value, key) => {
-      result.params.push({ key, value, enabled: true });
-    });
-    // Remove query params from URL (we'll add them as params)
-    result.url = urlObj.origin + urlObj.pathname;
-  }
-
-  // Extract Basic Auth (-u or --user)
-  const authMatch = command.match(/-u\s+['"]?([^:\s]+):([^\s'"]+)['"]?|--user\s+['"]?([^:\s]+):([^\s'"]+)['"]?/i);
-  if (authMatch) {
-    const username = authMatch[1] || authMatch[3];
-    const password = authMatch[2] || authMatch[4];
-    result.auth = {
-      type: 'basic',
-      username: username || '',
-      password: password || ''
-    };
+    const hasTemplateVars = result.url.includes('{{') || result.url.includes('}}');
+    if (!hasTemplateVars) {
+      try {
+        // If URL has no scheme, skip parsing to avoid invalid URL errors
+        const urlObj = new URL(result.url);
+        urlObj.searchParams.forEach((value, key) => {
+          result.params.push({ key, value, enabled: true });
+        });
+        // Remove query params from URL (we'll add them as params)
+        result.url = urlObj.origin + urlObj.pathname;
+      } catch {
+        // Leave URL as-is if parsing fails
+      }
+    }
   }
 
   // Extract Bearer token from Authorization header

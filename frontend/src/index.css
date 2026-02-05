@@ -82,16 +82,6 @@ code {
     }
 }
 
-/* Hide Emergent badge */
-#emergent-badge,
-a[href*="emergent.sh"][id*="badge"],
-a[href*="emergentagent.com"][id*="badge"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
 @layer base {
     [data-debug-wrapper="true"] {
         display: contents !important;
@@ -123,3 +113,51 @@ a[href*="emergentagent.com"][id*="badge"] {
         border-bottom-color: inherit;
     }
 }
+
+/* Light theme overrides (Postman-like) */
+.bg-zinc-950 { background-color: #f8fafc !important; }
+.bg-zinc-900 { background-color: #ffffff !important; }
+.bg-zinc-800 { background-color: #f1f5f9 !important; }
+.bg-zinc-700 { background-color: #e2e8f0 !important; }
+.bg-zinc-900\/50 { background-color: rgba(255, 255, 255, 0.7) !important; }
+.bg-zinc-800\/50 { background-color: rgba(241, 245, 249, 0.7) !important; }
+.bg-zinc-800\/40 { background-color: rgba(241, 245, 249, 0.6) !important; }
+.hover\:bg-zinc-900:hover { background-color: #f1f5f9 !important; }
+.hover\:bg-zinc-800:hover { background-color: #e2e8f0 !important; }
+.hover\:bg-zinc-800\/50:hover { background-color: rgba(241, 245, 249, 0.7) !important; }
+.focus\:bg-zinc-900:focus { background-color: #f1f5f9 !important; }
+.focus\:bg-zinc-800:focus { background-color: #e2e8f0 !important; }
+.data-\[state=active\]\:bg-zinc-800 { background-color: #e2e8f0 !important; }
+.data-\[state=active\]\:bg-zinc-900 { background-color: #f1f5f9 !important; }
+.data-\[state=active\]\:text-zinc-100 { color: #0f172a !important; }
+.data-\[state=active\]\:bg-background { background-color: #e2e8f0 !important; }
+.data-\[state=active\]\:text-foreground { color: #0f172a !important; }
+
+/* Accent backgrounds for active/selected/focus states */
+.bg-accent { background-color: #e2e8f0 !important; }
+.text-accent-foreground { color: #0f172a !important; }
+.hover\:bg-accent:hover { background-color: #e2e8f0 !important; }
+.focus\:bg-accent:focus { background-color: #e2e8f0 !important; }
+.data-\[state=open\]\:bg-accent { background-color: #e2e8f0 !important; }
+.data-\[state=on\]\:bg-accent { background-color: #e2e8f0 !important; }
+.data-\[selected=true\]\:bg-accent { background-color: #e2e8f0 !important; }
+.data-\[highlighted\]\:bg-accent { background-color: #e2e8f0 !important; }
+.aria-selected\:bg-accent[aria-selected="true"] { background-color: #e2e8f0 !important; }
+
+.text-zinc-100 { color: #0f172a !important; }
+.text-zinc-200 { color: #1f2937 !important; }
+.text-zinc-300 { color: #334155 !important; }
+.text-zinc-400 { color: #475569 !important; }
+.text-zinc-500 { color: #64748b !important; }
+.text-zinc-600 { color: #94a3b8 !important; }
+
+.border-zinc-800 { border-color: #e2e8f0 !important; }
+.border-zinc-700 { border-color: #e5e7eb !important; }
+.border-zinc-600 { border-color: #e5e7eb !important; }
+
+.placeholder-zinc-600::placeholder { color: #94a3b8 !important; }
+.placeholder-zinc-500::placeholder { color: #94a3b8 !important; }
+
+.from-zinc-950 { --tw-gradient-from: #f8fafc !important; }
+.via-zinc-900 { --tw-gradient-stops: #f8fafc, #f1f5f9, var(--tw-gradient-to, rgba(255,255,255,0)) !important; }
+.to-zinc-950 { --tw-gradient-to: #f8fafc !important; }
