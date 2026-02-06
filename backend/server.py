@@ -93,7 +93,6 @@ async def get_allowlisted_orgs_or_raise(email: str):
 async def auth_session(session_data: SessionExchange):
     """Exchange session_id for user data and create session"""
     try:
-        # Exchange session_id with Emergent
         user_data = await exchange_session_id(session_data.session_id)
         email = (user_data.get("email") or "").strip().lower()
         if not email:

@@ -65,7 +65,7 @@ Collections:
 ```
 User Login
   ↓
-Google OAuth (Emergent)
+Google OAuth ()
   ↓
 /api/auth/session (exchanges session_id)
   ↓
@@ -233,7 +233,7 @@ mongosh test_database --eval "db.environments.find().pretty()"
 ### user_sessions Collection
 ```javascript
 {
-  session_token: "sess_xyz789",     // From Emergent OAuth
+  session_token: "sess_xyz789",    
   user_id: "user_abc123",
   expires_at: ISODate("2024-01-22"),  // 7 days from creation
   created_at: ISODate("2024-01-15")
