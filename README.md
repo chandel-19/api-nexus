@@ -43,7 +43,7 @@ If you want to run locally:
 ```
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=test_database
-GOOGLE_CLIENT_ID=919494983538-qlo2k63gaufl3jhhl700ddr3qk7citeq.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 FRONTEND_URL=http://localhost:3000
 COOKIE_SECURE=false
 ```
@@ -51,7 +51,7 @@ COOKIE_SECURE=false
 ### Frontend `.env` (`frontend/.env`)
 ```
 REACT_APP_BACKEND_URL=http://localhost:8000
-REACT_APP_GOOGLE_CLIENT_ID=919494983538-qlo2k63gaufl3jhhl700ddr3qk7citeq.apps.googleusercontent.com
+REACT_APP_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 ```
 
 ### Start backend
