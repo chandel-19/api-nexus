@@ -4,8 +4,9 @@
 1. Install and start Docker Desktop.
 2. Clone the repo:
 3. Create a `.env` file in the repo root (same folder as `docker-compose.yml`):
+   Create your own GOOGLE_CLIENT_ID and add in .env file
    ```
-   GOOGLE_CLIENT_ID=919494983538-qlo2k63gaufl3jhhl700ddr3qk7citeq.apps.googleusercontent.com
+       GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
    ```
 4. Run the app:
    ```
