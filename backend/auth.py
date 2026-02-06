@@ -6,23 +6,6 @@ import requests
 import uuid
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-# Emergent auth endpoint
-EMERGENT_AUTH_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
-
-
-async def exchange_session_id(session_id: str) -> dict:
-    """Exchange session_id for user data from Emergent"""
-    try:
-        headers = {"X-Session-ID": session_id}
-        response = requests.get(EMERGENT_AUTH_URL, headers=headers, timeout=10)
-        
-        if response.status_code != 200:
-            raise HTTPException(status_code=401, detail="Invalid session ID")
-        
-        return response.json()
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Auth service error: {str(e)}")
-
 
 async def verify_google_id_token(id_token: str, client_id: str) -> dict:
     """Verify Google ID token and return user info"""
